@@ -459,17 +459,28 @@
                 >
 
 
-                <label>
+                <label class="barcode-field">
                     بارکد
 
-                    <input
-                        id="productBarcode"
-                        type="text"
-                        inputmode="numeric"
-                        placeholder="مثلاً 6261234567890"
-                        required
-                    >
+                    <div class="barcode-input-row">
+                        <input
+                            id="productBarcode"
+                            type="text"
+                            inputmode="numeric"
+                            pattern="[0-9]*"
+                            placeholder="بارکد را وارد یا اسکن کنید"
+                            autocomplete="off"
+                            required
+                        >
 
+                        <button
+                            id="productScanBarcodeBtn"
+                            class="barcode-scan-btn"
+                            type="button"
+                        >📷 اسکن</button>
+                    </div>
+
+                    <small class="barcode-hint">می‌توانید بارکد را دستی وارد کنید یا با دوربین اسکن کنید.</small>
                 </label>
 
 
@@ -704,6 +715,26 @@
 
 
 <script src="app.js"></script>
+
+
+
+    <div id="barcodeScannerModal" class="barcode-scanner-modal" aria-hidden="true">
+        <div class="barcode-scanner-card">
+            <div class="barcode-scanner-header">
+                <div>
+                    <h3>اسکن بارکد</h3>
+                    <p>بارکد را داخل کادر قرار دهید</p>
+                </div>
+                <button id="closeBarcodeScannerBtn" type="button" class="barcode-close-btn">×</button>
+            </div>
+            <div class="barcode-camera-wrap">
+                <video id="barcodeVideo" playsinline autoplay muted></video>
+                <div class="barcode-target"><span></span></div>
+            </div>
+            <div id="barcodeScannerStatus" class="barcode-scanner-status">دوربین در حال آماده‌سازی است...</div>
+            <button id="manualBarcodeBtn" type="button" class="barcode-manual-btn">ورود دستی بارکد</button>
+        </div>
+    </div>
 
 </body>
 </html>
