@@ -36,11 +36,39 @@
                 class="icon-button"
                 id="settingsBtn"
                 type="button"
+                title="تنظیمات ذخیره‌سازی"
             >
                 ⚙️
             </button>
 
         </header>
+
+
+        <!-- ================= STORAGE STATUS ================= -->
+
+        <div
+            id="storageStatus"
+            class="storage-status"
+        >
+            <span id="storageStatusIcon">💾</span>
+
+            <div class="storage-status-text">
+                <strong id="storageStatusTitle">
+                    پوشه ذخیره‌سازی متصل نیست
+                </strong>
+
+                <small id="storageStatusDescription">
+                    برای شروع، پوشه Bizadshop را انتخاب کنید.
+                </small>
+            </div>
+
+            <button
+                id="connectFolderBtn"
+                type="button"
+            >
+                انتخاب پوشه
+            </button>
+        </div>
 
 
         <!-- ================= NAVIGATION ================= -->
@@ -118,6 +146,7 @@
 
                         <div>
                             <small>تعداد کالا</small>
+
                             <strong id="totalProducts">
                                 0
                             </strong>
@@ -132,6 +161,7 @@
 
                         <div>
                             <small>مجموع موجودی</small>
+
                             <strong id="totalStock">
                                 0
                             </strong>
@@ -146,6 +176,7 @@
 
                         <div>
                             <small>فروش امروز</small>
+
                             <strong id="todaySales">
                                 0
                             </strong>
@@ -160,6 +191,7 @@
 
                         <div>
                             <small>مبلغ فروش امروز</small>
+
                             <strong id="todaySalesAmount">
                                 0 تومان
                             </strong>
@@ -178,8 +210,14 @@
                         type="button"
                     >
                         <span>➕</span>
-                        <strong>افزودن کالا</strong>
-                        <small>ثبت کالای جدید</small>
+
+                        <strong>
+                            افزودن کالا
+                        </strong>
+
+                        <small>
+                            ثبت کالای جدید
+                        </small>
                     </button>
 
 
@@ -189,8 +227,14 @@
                         type="button"
                     >
                         <span>🛒</span>
-                        <strong>ثبت فروش</strong>
-                        <small>شروع فروش جدید</small>
+
+                        <strong>
+                            ثبت فروش
+                        </strong>
+
+                        <small>
+                            شروع فروش جدید
+                        </small>
                     </button>
 
                 </div>
@@ -214,9 +258,11 @@
                     </div>
 
                     <div id="lowStockList">
+
                         <div class="empty">
                             کالایی وجود ندارد.
                         </div>
+
                     </div>
 
                 </div>
@@ -237,7 +283,10 @@
 
                     <div>
                         <h2>کالاها</h2>
-                        <p>مدیریت کالاهای فروشگاه</p>
+
+                        <p>
+                            مدیریت کالاهای فروشگاه
+                        </p>
                     </div>
 
                     <button
@@ -289,7 +338,10 @@
 
                     <div>
                         <h2>فروش</h2>
-                        <p>ثبت فروش جدید</p>
+
+                        <p>
+                            ثبت فروش جدید
+                        </p>
                     </div>
 
                 </div>
@@ -383,7 +435,10 @@
 
                     <div>
                         <h2>انبار</h2>
-                        <p>وضعیت موجودی کالاها</p>
+
+                        <p>
+                            وضعیت موجودی کالاها
+                        </p>
                     </div>
 
                 </div>
@@ -392,17 +447,28 @@
                 <div class="inventory-summary">
 
                     <div>
-                        <small>تعداد کالا</small>
+
+                        <small>
+                            تعداد کالا
+                        </small>
+
                         <strong id="inventoryProductCount">
                             0
                         </strong>
+
                     </div>
 
+
                     <div>
-                        <small>مجموع موجودی</small>
+
+                        <small>
+                            مجموع موجودی
+                        </small>
+
                         <strong id="inventoryTotalStock">
                             0
                         </strong>
+
                     </div>
 
                 </div>
@@ -478,9 +544,13 @@
                             id="productBarcode"
                             type="text"
                             inputmode="numeric"
-                            placeholder="مثلاً 6261234567890"
-                            required
+                            placeholder="اختیاری؛ مثلاً 6261234567890"
+                            autocomplete="off"
                         >
+
+                        <small class="field-help">
+                            بارکد اختیاری است.
+                        </small>
 
                     </label>
 
@@ -649,9 +719,10 @@
                 </div>
 
 
-                <div id="stockProductName"
-                     class="modal-product-name">
-                </div>
+                <div
+                    id="stockProductName"
+                    class="modal-product-name"
+                ></div>
 
 
                 <form id="stockForm">
@@ -725,6 +796,71 @@
 
 
         <!-- ==================================================
+             STORAGE MODAL
+             ================================================== -->
+
+        <div
+            class="modal"
+            id="storageModal"
+        >
+
+            <div class="modal-box">
+
+                <div class="modal-header">
+
+                    <h3>
+                        ذخیره‌سازی Bizadshop
+                    </h3>
+
+                    <button
+                        class="close-button"
+                        data-close-modal="storageModal"
+                        type="button"
+                    >
+                        ×
+                    </button>
+
+                </div>
+
+
+                <div class="storage-modal-content">
+
+                    <div class="storage-big-icon">
+                        💾
+                    </div>
+
+                    <h4>
+                        پوشه اطلاعات فروشگاه
+                    </h4>
+
+                    <p>
+                        اطلاعات کالاها، موجودی و فروش در فایل‌های
+                        داخل پوشه Bizadshop ذخیره می‌شوند.
+                    </p>
+
+                    <div
+                        id="storageModalStatus"
+                        class="storage-modal-status"
+                    >
+                        پوشه‌ای متصل نیست.
+                    </div>
+
+                    <button
+                        id="storageModalConnectBtn"
+                        class="primary-button storage-connect-button"
+                        type="button"
+                    >
+                        انتخاب پوشه
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ==================================================
              TOAST
              ================================================== -->
 
@@ -740,4 +876,4 @@
 
 </body>
 
-    </html>
+                            </html>
