@@ -21,19 +21,14 @@
 
     <title>Bizadshop</title>
 
-    <link
-        rel="stylesheet"
-        href="style.css"
-    >
+    <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
 <div class="app">
 
-    <!-- ======================================================
-         TOPBAR
-         ====================================================== -->
+    <!-- ================= HEADER ================= -->
 
     <header class="topbar">
 
@@ -41,42 +36,78 @@
 
             <h1>Bizadshop</h1>
 
-            <span>
-                مدیریت فروشگاه
-            </span>
+            <span>مدیریت فروشگاه</span>
 
             <div
                 id="connectionStatus"
                 class="connection-status"
             >
-                در حال اتصال...
+                در حال بارگذاری اطلاعات...
             </div>
 
         </div>
 
         <button
-            type="button"
             class="icon-button"
-            id="settingsButton"
-            aria-label="تنظیمات"
-            title="تنظیمات"
+            id="settingsBtn"
+            type="button"
+            title="اتصال پوشه"
         >
-            ⚙
+            📁
         </button>
 
     </header>
 
 
-    <!-- ======================================================
-         MAIN CONTENT
-         ====================================================== -->
+    <!-- ================= NAVIGATION ================= -->
+
+    <nav class="navigation">
+
+        <button
+            class="nav-btn active"
+            data-page="dashboard"
+            type="button"
+        >
+            <span>🏠</span>
+            <small>خانه</small>
+        </button>
+
+        <button
+            class="nav-btn"
+            data-page="products"
+            type="button"
+        >
+            <span>📦</span>
+            <small>کالاها</small>
+        </button>
+
+        <button
+            class="nav-btn"
+            data-page="sale"
+            type="button"
+        >
+            <span>🧾</span>
+            <small>فروش</small>
+        </button>
+
+        <button
+            class="nav-btn"
+            data-page="inventory"
+            type="button"
+        >
+            <span>📊</span>
+            <small>انبار</small>
+        </button>
+
+    </nav>
+
+
+    <!-- ================= MAIN ================= -->
 
     <main class="content">
 
 
-        <!-- ==================================================
-             DASHBOARD
-             ================================================== -->
+        <!-- ================= DASHBOARD ================= -->
 
         <section
             id="dashboardPage"
@@ -86,38 +117,22 @@
             <div class="page-title">
 
                 <div>
-
-                    <h2>
-                        داشبورد
-                    </h2>
-
-                    <p>
-                        نمای کلی فروشگاه
-                    </p>
-
+                    <h2>داشبورد</h2>
+                    <p>خلاصه وضعیت فروشگاه</p>
                 </div>
 
             </div>
 
-
-            <!-- STATS -->
 
             <div class="stats-grid">
 
                 <div class="stat-card">
 
-                    <div class="stat-icon">
-                        📦
-                    </div>
+                    <span class="stat-icon">📦</span>
 
                     <div>
-                        <small>
-                            محصولات
-                        </small>
-
-                        <strong id="dashboardProductsCount">
-                            0
-                        </strong>
+                        <small>تعداد کالا</small>
+                        <strong id="totalProducts">0</strong>
                     </div>
 
                 </div>
@@ -125,18 +140,11 @@
 
                 <div class="stat-card">
 
-                    <div class="stat-icon">
-                        🛒
-                    </div>
+                    <span class="stat-icon">📊</span>
 
                     <div>
-                        <small>
-                            فروش امروز
-                        </small>
-
-                        <strong id="dashboardSalesCount">
-                            0
-                        </strong>
+                        <small>مجموع موجودی</small>
+                        <strong id="totalStock">0</strong>
                     </div>
 
                 </div>
@@ -144,18 +152,11 @@
 
                 <div class="stat-card">
 
-                    <div class="stat-icon">
-                        💰
-                    </div>
+                    <span class="stat-icon">🧾</span>
 
                     <div>
-                        <small>
-                            مبلغ فروش
-                        </small>
-
-                        <strong id="dashboardSalesAmount">
-                            ۰ تومان
-                        </strong>
+                        <small>فروش امروز</small>
+                        <strong id="todaySales">0</strong>
                     </div>
 
                 </div>
@@ -163,170 +164,63 @@
 
                 <div class="stat-card">
 
-                    <div class="stat-icon">
-                        ⚠️
-                    </div>
+                    <span class="stat-icon">💰</span>
 
                     <div>
-                        <small>
-                            موجودی کم
-                        </small>
-
-                        <strong id="dashboardLowStock">
-                            0
-                        </strong>
+                        <small>مبلغ فروش امروز</small>
+                        <strong id="todaySalesAmount">0 تومان</strong>
                     </div>
 
                 </div>
 
             </div>
 
-
-            <!-- ACTIONS -->
 
             <div class="dashboard-actions">
 
                 <button
-                    type="button"
                     class="big-action primary"
-                    id="dashboardAddProduct"
+                    id="quickAddProduct"
+                    type="button"
                 >
-
-                    <span>
-                        ＋
-                    </span>
-
-                    <strong>
-                        افزودن محصول
-                    </strong>
-
-                    <small>
-                        محصول جدید به فروشگاه اضافه کنید
-                    </small>
-
+                    <span>➕</span>
+                    <strong>افزودن کالا</strong>
+                    <small>ثبت کالای جدید</small>
                 </button>
 
 
                 <button
-                    type="button"
                     class="big-action"
-                    id="dashboardNewSale"
-                >
-
-                    <span>
-                        🛒
-                    </span>
-
-                    <strong>
-                        فروش جدید
-                    </strong>
-
-                    <small>
-                        ثبت یک فروش جدید
-                    </small>
-
-                </button>
-
-
-                <button
+                    id="quickSale"
                     type="button"
-                    class="big-action"
-                    id="dashboardInventory"
                 >
-
-                    <span>
-                        📦
-                    </span>
-
-                    <strong>
-                        انبار
-                    </strong>
-
-                    <small>
-                        مشاهده موجودی محصولات
-                    </small>
-
-                </button>
-
-
-                <button
-                    type="button"
-                    class="big-action"
-                    id="dashboardProducts"
-                >
-
-                    <span>
-                        🏷️
-                    </span>
-
-                    <strong>
-                        محصولات
-                    </strong>
-
-                    <small>
-                        مدیریت محصولات فروشگاه
-                    </small>
-
+                    <span>🛒</span>
+                    <strong>ثبت فروش</strong>
+                    <small>شروع فروش جدید</small>
                 </button>
 
             </div>
 
 
-            <!-- RECENT PRODUCTS -->
-
             <div class="section-card">
 
                 <div class="section-header">
 
-                    <h3>
-                        محصولات اخیر
-                    </h3>
+                    <h3>کالاهای کم‌موجودی</h3>
 
                     <button
+                        id="showLowStock"
                         type="button"
-                        id="viewAllProducts"
                     >
                         مشاهده همه
                     </button>
 
                 </div>
 
-                <div id="recentProducts">
-
+                <div id="lowStockList">
                     <div class="empty">
-                        هنوز محصولی ثبت نشده است.
+                        در حال بارگذاری...
                     </div>
-
-                </div>
-
-            </div>
-
-
-            <!-- RECENT SALES -->
-
-            <div class="section-card">
-
-                <div class="section-header">
-
-                    <h3>
-                        فروش‌های اخیر
-                    </h3>
-
-                    <button
-                        type="button"
-                        id="viewAllSales"
-                    >
-                        مشاهده همه
-                    </button>
-
-                </div>
-
-                <div id="recentSales">
-
-                    <div class="empty">
-                        هنوز فروشی ثبت نشده است.
-                    </div>
-
                 </div>
 
             </div>
@@ -334,10 +228,7 @@
         </section>
 
 
-
-        <!-- ==================================================
-             PRODUCTS
-             ================================================== -->
+        <!-- ================= PRODUCTS ================= -->
 
         <section
             id="productsPage"
@@ -347,23 +238,16 @@
             <div class="page-title">
 
                 <div>
-
-                    <h2>
-                        محصولات
-                    </h2>
-
-                    <p>
-                        مدیریت محصولات فروشگاه
-                    </p>
-
+                    <h2>کالاها</h2>
+                    <p>مدیریت کالاهای فروشگاه</p>
                 </div>
 
                 <button
-                    type="button"
                     class="primary-button"
-                    id="addProductButton"
+                    id="addProductBtn"
+                    type="button"
                 >
-                    + افزودن
+                    + افزودن کالا
                 </button>
 
             </div>
@@ -371,26 +255,22 @@
 
             <div class="search-box">
 
-                <span>
-                    🔍
-                </span>
+                <span>🔎</span>
 
                 <input
-                    type="search"
                     id="productSearch"
-                    placeholder="جستجوی نام یا بارکد محصول..."
+                    type="search"
+                    placeholder="جستجو با نام یا بارکد..."
                     autocomplete="off"
                 >
 
             </div>
 
 
-            <div
-                id="productsList"
-            >
+            <div id="productsList">
 
                 <div class="empty">
-                    هنوز محصولی ثبت نشده است.
+                    هنوز کالایی ثبت نشده است.
                 </div>
 
             </div>
@@ -398,90 +278,62 @@
         </section>
 
 
-
-        <!-- ==================================================
-             SALES
-             ================================================== -->
+        <!-- ================= SALE ================= -->
 
         <section
-            id="salesPage"
+            id="salePage"
             class="page"
         >
 
             <div class="page-title">
 
                 <div>
-
-                    <h2>
-                        فروش
-                    </h2>
-
-                    <p>
-                        ثبت و مدیریت فروش
-                    </p>
-
+                    <h2>فروش</h2>
+                    <p>ثبت فروش جدید</p>
                 </div>
 
             </div>
 
 
-            <!-- PRODUCT SEARCH -->
+            <div class="sale-search">
+
+                <input
+                    id="saleSearch"
+                    type="search"
+                    placeholder="بارکد یا نام کالا..."
+                    autocomplete="off"
+                >
+
+                <button
+                    id="scanBarcodeBtn"
+                    type="button"
+                >
+                    📷 اسکن
+                </button>
+
+            </div>
+
+
+            <div id="saleSearchResults"></div>
+
 
             <div class="section-card">
 
                 <div class="section-header">
 
-                    <h3>
-                        افزودن محصول به فاکتور
-                    </h3>
-
-                </div>
-
-
-                <div class="sale-search">
-
-                    <input
-                        type="search"
-                        id="saleSearch"
-                        placeholder="نام یا بارکد محصول..."
-                        autocomplete="off"
-                    >
+                    <h3>سبد فروش</h3>
 
                     <button
+                        id="clearCartBtn"
                         type="button"
-                        id="saleSearchButton"
                     >
-                        جستجو
+                        پاک کردن
                     </button>
 
                 </div>
 
 
-                <div id="saleSearchResults">
-
-                    <div class="empty">
-                        برای افزودن محصول جستجو کنید.
-                    </div>
-
-                </div>
-
-            </div>
-
-
-            <!-- CART -->
-
-            <div class="section-card">
-
-                <div class="section-header">
-
-                    <h3>
-                        سبد فروش
-                    </h3>
-
-                </div>
-
-
-                <div id="cartItems">
+                <div id="cartList">
 
                     <div class="empty">
                         سبد فروش خالی است.
@@ -492,21 +344,19 @@
 
                 <div class="sale-total">
 
-                    <span>
-                        مجموع
-                    </span>
+                    <span>مبلغ نهایی</span>
 
-                    <strong id="saleTotal">
-                        ۰ تومان
+                    <strong id="cartTotal">
+                        0 تومان
                     </strong>
 
                 </div>
 
 
                 <button
-                    type="button"
                     class="checkout-button"
-                    id="checkoutButton"
+                    id="checkoutBtn"
+                    type="button"
                 >
                     ثبت فروش
                 </button>
@@ -516,10 +366,7 @@
         </section>
 
 
-
-        <!-- ==================================================
-             INVENTORY
-             ================================================== -->
+        <!-- ================= INVENTORY ================= -->
 
         <section
             id="inventoryPage"
@@ -529,15 +376,8 @@
             <div class="page-title">
 
                 <div>
-
-                    <h2>
-                        انبار
-                    </h2>
-
-                    <p>
-                        وضعیت موجودی محصولات
-                    </p>
-
+                    <h2>انبار</h2>
+                    <p>وضعیت موجودی کالاها</p>
                 </div>
 
             </div>
@@ -546,54 +386,13 @@
             <div class="inventory-summary">
 
                 <div>
-
-                    <small>
-                        تعداد محصولات
-                    </small>
-
-                    <strong id="inventoryProductsCount">
-                        0
-                    </strong>
-
+                    <small>تعداد کالا</small>
+                    <strong id="inventoryProductCount">0</strong>
                 </div>
 
-
                 <div>
-
-                    <small>
-                        تعداد کالاها
-                    </small>
-
-                    <strong id="inventoryItemsCount">
-                        0
-                    </strong>
-
-                </div>
-
-
-                <div>
-
-                    <small>
-                        موجودی کم
-                    </small>
-
-                    <strong id="inventoryLowStock">
-                        0
-                    </strong>
-
-                </div>
-
-
-                <div>
-
-                    <small>
-                        ناموجود
-                    </small>
-
-                    <strong id="inventoryEmptyStock">
-                        0
-                    </strong>
-
+                    <small>مجموع موجودی</small>
+                    <strong id="inventoryTotalStock">0</strong>
                 </div>
 
             </div>
@@ -601,14 +400,12 @@
 
             <div class="search-box">
 
-                <span>
-                    🔍
-                </span>
+                <span>🔎</span>
 
                 <input
-                    type="search"
                     id="inventorySearch"
-                    placeholder="جستجوی محصول..."
+                    type="search"
+                    placeholder="جستجوی کالا..."
                     autocomplete="off"
                 >
 
@@ -618,94 +415,7 @@
             <div id="inventoryList">
 
                 <div class="empty">
-                    اطلاعات انبار موجود نیست.
-                </div>
-
-            </div>
-
-        </section>
-
-
-
-        <!-- ==================================================
-             SETTINGS
-             ================================================== -->
-
-        <section
-            id="settingsPage"
-            class="page"
-        >
-
-            <div class="page-title">
-
-                <div>
-
-                    <h2>
-                        تنظیمات
-                    </h2>
-
-                    <p>
-                        تنظیمات فروشگاه
-                    </p>
-
-                </div>
-
-            </div>
-
-
-            <div class="section-card">
-
-                <div class="section-header">
-
-                    <h3>
-                        تنظیمات عمومی
-                    </h3>
-
-                </div>
-
-
-                <label>
-                    نام فروشگاه
-
-                    <input
-                        type="text"
-                        id="storeName"
-                        placeholder="نام فروشگاه"
-                    >
-
-                </label>
-
-
-                <label>
-                    شماره تماس
-
-                    <input
-                        type="tel"
-                        id="storePhone"
-                        placeholder="شماره تماس"
-                    >
-
-                </label>
-
-
-                <div class="form-actions">
-
-                    <button
-                        type="button"
-                        class="secondary-button"
-                        id="settingsCancelButton"
-                    >
-                        لغو
-                    </button>
-
-                    <button
-                        type="button"
-                        class="primary-button"
-                        id="saveSettingsButton"
-                    >
-                        ذخیره
-                    </button>
-
+                    موجودی خالی است.
                 </div>
 
             </div>
@@ -715,117 +425,11 @@
     </main>
 
 
-
-    <!-- ======================================================
-         BOTTOM NAVIGATION
-         ====================================================== -->
-
-    <nav
-        class="navigation"
-        aria-label="ناوبری اصلی"
-    >
-
-        <button
-            type="button"
-            class="nav-btn active"
-            data-page="dashboardPage"
-            id="navDashboard"
-        >
-
-            <span>
-                🏠
-            </span>
-
-            <small>
-                داشبورد
-            </small>
-
-        </button>
-
-
-        <button
-            type="button"
-            class="nav-btn"
-            data-page="productsPage"
-            id="navProducts"
-        >
-
-            <span>
-                📦
-            </span>
-
-            <small>
-                محصولات
-            </small>
-
-        </button>
-
-
-        <button
-            type="button"
-            class="nav-btn"
-            data-page="salesPage"
-            id="navSales"
-        >
-
-            <span>
-                🛒
-            </span>
-
-            <small>
-                فروش
-            </small>
-
-        </button>
-
-
-        <button
-            type="button"
-            class="nav-btn"
-            data-page="inventoryPage"
-            id="navInventory"
-        >
-
-            <span>
-                🏷️
-            </span>
-
-            <small>
-                انبار
-            </small>
-
-        </button>
-
-
-        <button
-            type="button"
-            class="nav-btn"
-            data-page="settingsPage"
-            id="navSettings"
-        >
-
-            <span>
-                ⚙️
-            </span>
-
-            <small>
-                تنظیمات
-            </small>
-
-        </button>
-
-    </nav>
-
-
-
-    <!-- ======================================================
-         PRODUCT MODAL
-         ====================================================== -->
+    <!-- ================= PRODUCT MODAL ================= -->
 
     <div
         class="modal"
         id="productModal"
-        aria-hidden="true"
     >
 
         <div class="modal-box">
@@ -833,14 +437,13 @@
             <div class="modal-header">
 
                 <h3 id="productModalTitle">
-                    افزودن محصول
+                    افزودن کالا
                 </h3>
 
                 <button
-                    type="button"
                     class="close-button"
-                    id="closeProductModal"
-                    aria-label="بستن"
+                    data-close-modal="productModal"
+                    type="button"
                 >
                     ×
                 </button>
@@ -857,13 +460,39 @@
 
 
                 <label>
-                    نام محصول
+                    بارکد
 
                     <input
+                        id="productBarcode"
                         type="text"
-                        id="productName"
+                        inputmode="numeric"
+                        placeholder="مثلاً 6261234567890"
                         required
-                        autocomplete="off"
+                    >
+
+                </label>
+
+
+                <label>
+                    نام کالا
+
+                    <input
+                        id="productName"
+                        type="text"
+                        placeholder="نام کالا"
+                        required
+                    >
+
+                </label>
+
+
+                <label>
+                    دسته‌بندی
+
+                    <input
+                        id="productCategory"
+                        type="text"
+                        placeholder="مثلاً نوشیدنی"
                     >
 
                 </label>
@@ -872,26 +501,29 @@
                 <div class="two-columns">
 
                     <label>
-                        بارکد
+                        قیمت خرید
 
                         <input
-                            type="text"
-                            id="productBarcode"
-                            inputmode="numeric"
-                            autocomplete="off"
+                            id="purchasePrice"
+                            type="number"
+                            min="0"
+                            step="1"
+                            value="0"
                         >
 
                     </label>
 
 
                     <label>
-                        قیمت
+                        قیمت فروش
 
                         <input
+                            id="salePrice"
                             type="number"
-                            id="productPrice"
                             min="0"
-                            inputmode="numeric"
+                            step="1"
+                            value="0"
+                            required
                         >
 
                     </label>
@@ -902,26 +534,31 @@
                 <div class="two-columns">
 
                     <label>
-                        موجودی
+                        واحد
 
-                        <input
-                            type="number"
-                            id="productStock"
-                            min="0"
-                            inputmode="numeric"
-                        >
+                        <select id="productUnit">
+
+                            <option value="عدد">عدد</option>
+                            <option value="کیلو">کیلو</option>
+                            <option value="گرم">گرم</option>
+                            <option value="لیتر">لیتر</option>
+                            <option value="متر">متر</option>
+                            <option value="بسته">بسته</option>
+
+                        </select>
 
                     </label>
 
 
                     <label>
-                        حداقل موجودی
+                        موجودی اولیه
 
                         <input
+                            id="initialQuantity"
                             type="number"
-                            id="productMinStock"
                             min="0"
-                            inputmode="numeric"
+                            step="1"
+                            value="0"
                         >
 
                     </label>
@@ -934,7 +571,7 @@
                     <button
                         type="button"
                         class="secondary-button"
-                        id="cancelProductButton"
+                        data-close-modal="productModal"
                     >
                         انصراف
                     </button>
@@ -942,9 +579,8 @@
                     <button
                         type="submit"
                         class="primary-button"
-                        id="saveProductButton"
                     >
-                        ذخیره محصول
+                        ذخیره کالا
                     </button>
 
                 </div>
@@ -956,30 +592,23 @@
     </div>
 
 
-
-    <!-- ======================================================
-         EDIT / SALE MODAL
-         ====================================================== -->
+    <!-- ================= STOCK MODAL ================= -->
 
     <div
         class="modal"
-        id="saleModal"
-        aria-hidden="true"
+        id="stockModal"
     >
 
         <div class="modal-box">
 
             <div class="modal-header">
 
-                <h3>
-                    افزودن به فروش
-                </h3>
+                <h3>تغییر موجودی</h3>
 
                 <button
-                    type="button"
                     class="close-button"
-                    id="closeSaleModal"
-                    aria-label="بستن"
+                    data-close-modal="stockModal"
+                    type="button"
                 >
                     ×
                 </button>
@@ -988,73 +617,93 @@
 
 
             <div
+                id="stockProductName"
                 class="modal-product-name"
-                id="saleModalProductName"
-            >
-                محصول
-            </div>
+            ></div>
 
 
-            <label>
-                تعداد
+            <form id="stockForm">
 
                 <input
-                    type="number"
-                    id="saleQuantity"
-                    min="1"
-                    value="1"
-                    inputmode="numeric"
+                    type="hidden"
+                    id="stockProductId"
                 >
 
-            </label>
+
+                <label>
+                    نوع عملیات
+
+                    <select id="stockAction">
+
+                        <option value="increase">
+                            افزایش موجودی
+                        </option>
+
+                        <option value="decrease">
+                            کاهش موجودی
+                        </option>
+
+                        <option value="set">
+                            تعیین موجودی
+                        </option>
+
+                    </select>
+
+                </label>
 
 
-            <div class="form-actions">
+                <label>
+                    مقدار
 
-                <button
-                    type="button"
-                    class="secondary-button"
-                    id="cancelSaleButton"
-                >
-                    انصراف
-                </button>
+                    <input
+                        id="stockAmount"
+                        type="number"
+                        min="0"
+                        step="1"
+                        required
+                    >
 
-                <button
-                    type="button"
-                    class="primary-button"
-                    id="confirmSaleButton"
-                >
-                    افزودن
-                </button>
+                </label>
 
-            </div>
+
+                <div class="form-actions">
+
+                    <button
+                        type="button"
+                        class="secondary-button"
+                        data-close-modal="stockModal"
+                    >
+                        انصراف
+                    </button>
+
+                    <button
+                        type="submit"
+                        class="primary-button"
+                    >
+                        ذخیره
+                    </button>
+
+                </div>
+
+            </form>
 
         </div>
 
     </div>
 
 
-
-    <!-- ======================================================
-         TOAST
-         ====================================================== -->
+    <!-- ================= TOAST ================= -->
 
     <div
         id="toast"
         class="toast"
-        role="status"
-        aria-live="polite"
     ></div>
 
 
 </div>
 
 
-<!-- ==========================================================
-     JAVASCRIPT
-     ========================================================== -->
-
-<script src="script.js"></script>
+<script src="app.js"></script>
 
 </body>
 </html>
