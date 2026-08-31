@@ -2,11 +2,20 @@
 // Bizadshop
 // Permanent Folder Connection Edition
 //
-// اطلاعات فروشگاه فقط داخل:
+// اطلاعات اصلی فروشگاه:
 // Bizadshop/bizadshop-data.json
 //
-// IndexedDB فقط Folder Handle را نگه می‌دارد.
+// IndexedDB:
+// فقط برای نگه داشتن Folder Handle
+//
+// LocalStorage:
+// فقط یک Snapshot موقت برای جلوگیری از صفر شدن صفحه
+// در صورت از دست رفتن موقت مجوز مرورگر موبایل.
+//
+// نکته:
+// اطلاعات اصلی همچنان داخل bizadshop-data.json است.
 // ============================================================
+
 
 const DATA_FILE_NAME = "bizadshop-data.json";
 
@@ -15,39 +24,53 @@ const HANDLE_DB_VERSION = 1;
 const HANDLE_STORE = "handles";
 const HANDLE_KEY = "main-folder";
 
+const CACHE_KEY = "BizadshopLastKnownData";
+
 let folderHandle = null;
 
 let database = createEmptyDatabase();
 
 let cart = [];
 
+let connectionState = "unknown";
+
+let saveLock = Promise.resolve();
+
 
 // ============================================================
-// BASIC
+// BASIC UTILITIES
 // ============================================================
 
 function generateId(prefix) {
+
     return (
         prefix +
         "_" +
         Date.now() +
         "_" +
-        Math.random().toString(36).substring(2, 8)
+        Math.random()
+            .toString(36)
+            .substring(2, 8)
     );
 }
 
+
 function nowISO() {
+
     return new Date().toISOString();
 }
 
+
 function formatMoney(value) {
+
     return (
-        (Number(value) || 0).toLocaleString("fa-IR") +
-        " تومان"
-    );
+        Number(value) || 0
+    ).toLocaleString("fa-IR") + " تومان";
 }
 
+
 function escapeHTML(value) {
+
     return String(value ?? "")
         .replaceAll("&", "&amp;")
         .replaceAll("<", "&lt;")
@@ -56,42 +79,218 @@ function escapeHTML(value) {
         .replaceAll("'", "&#039;");
 }
 
+
 function showToast(message) {
-    const toast = document.getElementById("toast");
+
+    const toast =
+        document.getElementById("toast");
 
     if (!toast) return;
 
     toast.textContent = message;
+
     toast.classList.add("show");
 
-    setTimeout(() => {
-        toast.classList.remove("show");
-    }, 2500);
+    clearTimeout(
+        showToast.timer
+    );
+
+    showToast.timer =
+        setTimeout(() => {
+
+            toast.classList.remove(
+                "show"
+            );
+
+        }, 2800);
 }
 
-function setConnectionStatus(text) {
-    const element =
-        document.getElementById("connectionStatus");
 
-    if (element) {
-        element.textContent = text;
+function setConnectionStatus(
+    text,
+    state = ""
+) {
+
+    const element =
+        document.getElementById(
+            "connectionStatus"
+        );
+
+    if (!element) return;
+
+    element.textContent = text;
+
+    element.classList.remove(
+        "connected",
+        "warning",
+        "error"
+    );
+
+    if (state) {
+
+        element.classList.add(
+            state
+        );
     }
 }
 
 
 // ============================================================
-// EMPTY DATABASE
+// DATABASE
 // ============================================================
 
 function createEmptyDatabase() {
+
     return {
+
         version: 1,
+
         products: [],
+
         inventory: {},
+
         sales: [],
+
         sale_items: [],
+
         settings: {}
+
     };
+}
+
+
+function normalizeDatabase(data) {
+
+    const source =
+        data &&
+        typeof data === "object"
+            ? data
+            : {};
+
+
+    return {
+
+        version:
+            source.version || 1,
+
+        products:
+            Array.isArray(
+                source.products
+            )
+                ? source.products
+                : [],
+
+        inventory:
+            source.inventory &&
+            typeof source.inventory === "object"
+                ? source.inventory
+                : {},
+
+        sales:
+            Array.isArray(
+                source.sales
+            )
+                ? source.sales
+                : [],
+
+        sale_items:
+            Array.isArray(
+                source.sale_items
+            )
+                ? source.sale_items
+                : [],
+
+        settings:
+            source.settings &&
+            typeof source.settings === "object"
+                ? source.settings
+                : {}
+
+    };
+}
+
+
+function databaseHasData(data = database) {
+
+    return (
+        Array.isArray(data.products) &&
+        data.products.length > 0
+    ) ||
+    (
+        Array.isArray(data.sales) &&
+        data.sales.length > 0
+    ) ||
+    (
+        data.inventory &&
+        Object.keys(data.inventory).length > 0
+    );
+}
+
+
+// ============================================================
+// LOCAL SNAPSHOT
+//
+// این فقط برای این است که اگر موبایل موقتاً مجوز پوشه را
+// بعد از Refresh نداد، صفحه صفر نشود.
+// فایل اصلی همچنان bizadshop-data.json است.
+// ============================================================
+
+function saveLocalSnapshot() {
+
+    try {
+
+        localStorage.setItem(
+            CACHE_KEY,
+            JSON.stringify(database)
+        );
+
+    } catch (error) {
+
+        console.warn(
+            "Could not save local snapshot.",
+            error
+        );
+    }
+}
+
+
+function loadLocalSnapshot() {
+
+    try {
+
+        const text =
+            localStorage.getItem(
+                CACHE_KEY
+            );
+
+
+        if (!text) {
+            return null;
+        }
+
+
+        const parsed =
+            JSON.parse(text);
+
+
+        if (!parsed) {
+            return null;
+        }
+
+
+        return normalizeDatabase(
+            parsed
+        );
+
+    } catch (error) {
+
+        console.warn(
+            "Could not load local snapshot.",
+            error
+        );
+
+        return null;
+    }
 }
 
 
@@ -100,92 +299,230 @@ function createEmptyDatabase() {
 // ============================================================
 
 function openHandleDB() {
-    return new Promise((resolve, reject) => {
 
-        const request = indexedDB.open(
-            HANDLE_DB_NAME,
-            HANDLE_DB_VERSION
-        );
+    return new Promise(
+        (resolve, reject) => {
 
-        request.onupgradeneeded = function (event) {
+            if (!("indexedDB" in window)) {
 
-            const db = event.target.result;
+                reject(
+                    new Error(
+                        "IndexedDB در این مرورگر فعال نیست."
+                    )
+                );
 
-            if (!db.objectStoreNames.contains(HANDLE_STORE)) {
-                db.createObjectStore(HANDLE_STORE);
+                return;
             }
-        };
 
-        request.onsuccess = function () {
-            resolve(request.result);
-        };
 
-        request.onerror = function () {
-            reject(request.error);
-        };
-    });
+            const request =
+                indexedDB.open(
+                    HANDLE_DB_NAME,
+                    HANDLE_DB_VERSION
+                );
+
+
+            request.onupgradeneeded =
+                function(event) {
+
+                    const db =
+                        event.target.result;
+
+
+                    if (
+                        !db.objectStoreNames.contains(
+                            HANDLE_STORE
+                        )
+                    ) {
+
+                        db.createObjectStore(
+                            HANDLE_STORE
+                        );
+                    }
+                };
+
+
+            request.onsuccess =
+                function() {
+
+                    resolve(
+                        request.result
+                    );
+                };
+
+
+            request.onerror =
+                function() {
+
+                    reject(
+                        request.error
+                    );
+                };
+
+        }
+    );
 }
 
 
 async function saveFolderHandle(handle) {
 
-    const db = await openHandleDB();
+    if (!handle) return;
 
-    return new Promise((resolve, reject) => {
+    const db =
+        await openHandleDB();
 
-        const tx = db.transaction(
-            HANDLE_STORE,
-            "readwrite"
-        );
 
-        tx.objectStore(HANDLE_STORE).put(
-            handle,
-            HANDLE_KEY
-        );
+    return new Promise(
+        (resolve, reject) => {
 
-        tx.oncomplete = () => {
-            db.close();
-            resolve();
-        };
+            const transaction =
+                db.transaction(
+                    HANDLE_STORE,
+                    "readwrite"
+                );
 
-        tx.onerror = () => {
-            db.close();
-            reject(tx.error);
-        };
-    });
+
+            transaction
+                .objectStore(
+                    HANDLE_STORE
+                )
+                .put(
+                    handle,
+                    HANDLE_KEY
+                );
+
+
+            transaction.oncomplete =
+                function() {
+
+                    db.close();
+
+                    resolve();
+                };
+
+
+            transaction.onerror =
+                function() {
+
+                    db.close();
+
+                    reject(
+                        transaction.error
+                    );
+                };
+
+        }
+    );
 }
 
 
 async function getFolderHandle() {
 
-    const db = await openHandleDB();
+    const db =
+        await openHandleDB();
 
-    return new Promise((resolve, reject) => {
 
-        const tx = db.transaction(
-            HANDLE_STORE,
-            "readonly"
+    return new Promise(
+        (resolve, reject) => {
+
+            const transaction =
+                db.transaction(
+                    HANDLE_STORE,
+                    "readonly"
+                );
+
+
+            const request =
+                transaction
+                    .objectStore(
+                        HANDLE_STORE
+                    )
+                    .get(
+                        HANDLE_KEY
+                    );
+
+
+            request.onsuccess =
+                function() {
+
+                    db.close();
+
+                    resolve(
+                        request.result ||
+                        null
+                    );
+                };
+
+
+            request.onerror =
+                function() {
+
+                    db.close();
+
+                    reject(
+                        request.error
+                    );
+                };
+
+        }
+    );
+}
+
+
+async function deleteFolderHandle() {
+
+    try {
+
+        const db =
+            await openHandleDB();
+
+
+        return new Promise(
+            (resolve, reject) => {
+
+                const transaction =
+                    db.transaction(
+                        HANDLE_STORE,
+                        "readwrite"
+                    );
+
+
+                transaction
+                    .objectStore(
+                        HANDLE_STORE
+                    )
+                    .delete(
+                        HANDLE_KEY
+                    );
+
+
+                transaction.oncomplete =
+                    function() {
+
+                        db.close();
+
+                        resolve();
+                    };
+
+
+                transaction.onerror =
+                    function() {
+
+                        db.close();
+
+                        reject(
+                            transaction.error
+                        );
+                    };
+
+            }
         );
 
-        const request =
-            tx.objectStore(HANDLE_STORE).get(
-                HANDLE_KEY
-            );
+    } catch (error) {
 
-        request.onsuccess = () => {
-            db.close();
+        console.warn(error);
 
-            resolve(
-                request.result || null
-            );
-        };
-
-        request.onerror = () => {
-            db.close();
-
-            reject(request.error);
-        };
-    });
+    }
 }
 
 
@@ -193,13 +530,23 @@ async function getFolderHandle() {
 // PERMISSION
 // ============================================================
 
-async function getFolderPermission(handle) {
+async function getPermissionState(handle) {
 
     if (!handle) {
         return "denied";
     }
 
+
     try {
+
+        if (
+            typeof handle.queryPermission !==
+            "function"
+        ) {
+
+            return "unknown";
+        }
+
 
         return await handle.queryPermission({
             mode: "readwrite"
@@ -207,53 +554,41 @@ async function getFolderPermission(handle) {
 
     } catch (error) {
 
-        console.error(error);
+        console.warn(
+            "Permission query failed:",
+            error
+        );
 
-        return "denied";
+        return "unknown";
     }
 }
 
 
-async function requestFolderPermission(handle) {
+async function hasReadWritePermission(handle) {
 
-    if (!handle) {
-        return false;
-    }
+    const permission =
+        await getPermissionState(
+            handle
+        );
 
-    try {
 
-        let permission =
-            await getFolderPermission(handle);
-
-        if (permission === "granted") {
-            return true;
-        }
-
-        permission =
-            await handle.requestPermission({
-                mode: "readwrite"
-            });
-
-        return permission === "granted";
-
-    } catch (error) {
-
-        console.error(error);
-
-        return false;
-    }
+    return permission === "granted";
 }
 
 
 // ============================================================
-// FIND DATA FILE
+// FILE ACCESS
 // ============================================================
 
-async function getDataFileHandle() {
+async function getExistingDataFileHandle() {
 
     if (!folderHandle) {
-        throw new Error("پوشه متصل نیست.");
+
+        throw new Error(
+            "پوشه متصل نیست."
+        );
     }
+
 
     try {
 
@@ -263,170 +598,42 @@ async function getDataFileHandle() {
 
     } catch (error) {
 
-        if (error.name === "NotFoundError") {
+        if (
+            error.name ===
+            "NotFoundError"
+        ) {
+
             return null;
         }
+
 
         throw error;
     }
 }
 
 
-// ============================================================
-// CREATE DATA FILE ONLY IF IT DOES NOT EXIST
-// ============================================================
-
 async function ensureDataFile() {
 
     if (!folderHandle) {
-        throw new Error("پوشه متصل نیست.");
-    }
-
-    let fileHandle =
-        await getDataFileHandle();
-
-    // فایل وجود دارد:
-    // به هیچ وجه روی آن چیزی نمی‌نویسیم.
-    if (fileHandle) {
-        return fileHandle;
-    }
-
-    // فقط اگر فایل واقعاً وجود نداشت،
-    // فایل جدید ساخته می‌شود.
-    fileHandle =
-        await folderHandle.getFileHandle(
-            DATA_FILE_NAME,
-            {
-                create: true
-            }
-        );
-
-    const writable =
-        await fileHandle.createWritable();
-
-    await writable.write(
-        JSON.stringify(
-            createEmptyDatabase(),
-            null,
-            2
-        )
-    );
-
-    await writable.close();
-
-    return fileHandle;
-}
-
-
-// ============================================================
-// LOAD DATA FROM FILE
-// ============================================================
-
-async function loadDataFromFolder() {
-
-    if (!folderHandle) {
-        throw new Error("پوشه متصل نیست.");
-    }
-
-    // اول فایل موجود را پیدا می‌کنیم.
-    let fileHandle =
-        await getDataFileHandle();
-
-    // اگر وجود ندارد، تازه می‌سازیم.
-    if (!fileHandle) {
-        fileHandle =
-            await ensureDataFile();
-    }
-
-    const file =
-        await fileHandle.getFile();
-
-    const text =
-        await file.text();
-
-    // فایل خالی است.
-    if (!text.trim()) {
-
-        database =
-            createEmptyDatabase();
-
-        await saveDataToFolder();
-
-        return;
-    }
-
-    let parsed;
-
-    try {
-
-        parsed =
-            JSON.parse(text);
-
-    } catch (error) {
 
         throw new Error(
-            "فایل bizadshop-data.json خراب یا نامعتبر است."
+            "پوشه متصل نیست."
         );
     }
 
-    // اطلاعات واقعی فایل را وارد برنامه می‌کنیم.
-    database = {
 
-        version:
-            parsed.version || 1,
-
-        products:
-            Array.isArray(parsed.products)
-                ? parsed.products
-                : [],
-
-        inventory:
-            parsed.inventory &&
-            typeof parsed.inventory === "object"
-                ? parsed.inventory
-                : {},
-
-        sales:
-            Array.isArray(parsed.sales)
-                ? parsed.sales
-                : [],
-
-        sale_items:
-            Array.isArray(parsed.sale_items)
-                ? parsed.sale_items
-                : [],
-
-        settings:
-            parsed.settings &&
-            typeof parsed.settings === "object"
-                ? parsed.settings
-                : {}
-    };
-}
+    const existing =
+        await getExistingDataFileHandle();
 
 
-// ============================================================
-// SAVE DATA
-// ============================================================
+    if (existing) {
 
-async function saveDataToFolder() {
-
-    if (!folderHandle) {
-        throw new Error(
-            "پوشه Bizadshop متصل نیست."
-        );
+        return existing;
     }
 
-    const permission =
-        await getFolderPermission(
-            folderHandle
-        );
 
-    if (permission !== "granted") {
-        throw new Error(
-            "دسترسی نوشتن به پوشه وجود ندارد."
-        );
-    }
+    // فقط در صورتی فایل جدید می‌سازیم که واقعاً
+    // فایل قبلی وجود نداشته باشد.
 
     const fileHandle =
         await folderHandle.getFileHandle(
@@ -436,8 +643,244 @@ async function saveDataToFolder() {
             }
         );
 
+
     const writable =
         await fileHandle.createWritable();
+
+
+    await writable.write(
+        JSON.stringify(
+            createEmptyDatabase(),
+            null,
+            2
+        )
+    );
+
+
+    await writable.close();
+
+
+    return fileHandle;
+}
+
+
+// ============================================================
+// READ DATA FROM FOLDER
+// ============================================================
+
+async function loadDataFromFolder() {
+
+    if (!folderHandle) {
+
+        throw new Error(
+            "پوشه متصل نیست."
+        );
+    }
+
+
+    const permission =
+        await getPermissionState(
+            folderHandle
+        );
+
+
+    if (
+        permission !== "granted"
+    ) {
+
+        throw new Error(
+            "اجازه خواندن پوشه در دسترس نیست."
+        );
+    }
+
+
+    const existingFile =
+        await getExistingDataFileHandle();
+
+
+    // اگر فایل قبلی وجود دارد،
+    // حتماً همان فایل را می‌خوانیم.
+
+    if (existingFile) {
+
+        const file =
+            await existingFile.getFile();
+
+
+        const text =
+            await file.text();
+
+
+        if (!text.trim()) {
+
+            // فایل خالی را هرگز به عنوان دیتابیس
+            // جدید روی اطلاعات قبلی تحمیل نمی‌کنیم.
+
+            const local =
+                loadLocalSnapshot();
+
+
+            if (
+                local &&
+                databaseHasData(local)
+            ) {
+
+                database = local;
+
+                saveLocalSnapshot();
+
+                throw new Error(
+                    "فایل اطلاعات فروشگاه خالی است؛ اطلاعات قبلی از حافظه موقت نمایش داده شد."
+                );
+            }
+
+
+            database =
+                createEmptyDatabase();
+
+
+            saveLocalSnapshot();
+
+            return true;
+        }
+
+
+        let parsed;
+
+
+        try {
+
+            parsed =
+                JSON.parse(text);
+
+        } catch (error) {
+
+            const local =
+                loadLocalSnapshot();
+
+
+            if (
+                local &&
+                databaseHasData(local)
+            ) {
+
+                database = local;
+
+                throw new Error(
+                    "فایل اصلی خراب است؛ اطلاعات آخرین نسخه نمایش داده شد."
+                );
+            }
+
+
+            throw new Error(
+                "فایل bizadshop-data.json خراب یا نامعتبر است."
+            );
+        }
+
+
+        database =
+            normalizeDatabase(
+                parsed
+            );
+
+
+        // بعد از خواندن موفق فایل اصلی،
+        // Snapshot را هم به‌روز می‌کنیم.
+
+        saveLocalSnapshot();
+
+
+        return true;
+    }
+
+
+    // فایل واقعاً وجود ندارد.
+    // فقط در این حالت فایل جدید می‌سازیم.
+
+    const newFile =
+        await ensureDataFile();
+
+
+    const file =
+        await newFile.getFile();
+
+
+    const text =
+        await file.text();
+
+
+    if (text.trim()) {
+
+        try {
+
+            database =
+                normalizeDatabase(
+                    JSON.parse(text)
+                );
+
+        } catch (error) {
+
+            throw new Error(
+                "فایل جدید اطلاعات نامعتبر دارد."
+            );
+        }
+
+    } else {
+
+        database =
+            createEmptyDatabase();
+    }
+
+
+    saveLocalSnapshot();
+
+
+    return true;
+}
+
+
+// ============================================================
+// WRITE DATA TO FOLDER
+// ============================================================
+
+async function writeDatabaseToFolder() {
+
+    if (!folderHandle) {
+
+        throw new Error(
+            "پوشه Bizadshop متصل نیست."
+        );
+    }
+
+
+    const permission =
+        await getPermissionState(
+            folderHandle
+        );
+
+
+    if (
+        permission !== "granted"
+    ) {
+
+        throw new Error(
+            "اجازه نوشتن به پوشه وجود ندارد."
+        );
+    }
+
+
+    const fileHandle =
+        await folderHandle.getFileHandle(
+            DATA_FILE_NAME,
+            {
+                create: true
+            }
+        );
+
+
+    const writable =
+        await fileHandle.createWritable();
+
 
     await writable.write(
         JSON.stringify(
@@ -447,154 +890,421 @@ async function saveDataToFolder() {
         )
     );
 
+
     await writable.close();
 }
 
 
-async function saveDatabase() {
+// ============================================================
+// SAFE SAVE
+//
+// جلوگیری از هم‌زمان شدن چند عملیات ذخیره.
+// ============================================================
 
-    try {
+function saveDatabase() {
 
-        await saveDataToFolder();
+    saveLock =
+        saveLock.then(
+            async () => {
 
-        return true;
+                saveLocalSnapshot();
 
-    } catch (error) {
 
-        console.error(error);
+                if (!folderHandle) {
 
-        showToast(
-            error.message ||
-            "ذخیره اطلاعات ناموفق بود."
+                    throw new Error(
+                        "پوشه Bizadshop متصل نیست."
+                    );
+                }
+
+
+                await writeDatabaseToFolder();
+
+            }
         );
 
-        return false;
-    }
+
+    return saveLock
+        .then(
+            () => {
+
+                setConnectionStatus(
+                    "متصل و ذخیره شده",
+                    "connected"
+                );
+
+                return true;
+            }
+        )
+        .catch(
+            error => {
+
+                console.error(
+                    error
+                );
+
+
+                setConnectionStatus(
+                    "اتصال برای ذخیره نیاز به بررسی دارد",
+                    "warning"
+                );
+
+
+                showToast(
+                    error.message ||
+                    "ذخیره اطلاعات ناموفق بود."
+                );
+
+
+                return false;
+            }
+        );
 }
 
 
 // ============================================================
-// CONNECT EXISTING FOLDER
-// ============================================================
-
-async function connectExistingFolder() {
-
-    const handle =
-        await getFolderHandle();
-
-    if (!handle) {
-        return false;
-    }
-
-    folderHandle = handle;
-
-    const permission =
-        await getFolderPermission(
-            folderHandle
-        );
-
-    if (permission !== "granted") {
-
-        folderHandle = null;
-
-        setConnectionStatus(
-            "نیاز به تأیید دسترسی پوشه"
-        );
-
-        return false;
-    }
-
-    // ========================================================
-    // خیلی مهم:
-    // اول اطلاعات فایل قبلی خوانده می‌شود.
-    // دیتابیس خالی ساخته نمی‌شود.
-    // ========================================================
-
-    await loadDataFromFolder();
-
-    setConnectionStatus(
-        "متصل به پوشه: " +
-        handle.name
-    );
-
-    await refreshAll();
-
-    return true;
-}
-
-
-// ============================================================
-// CHOOSE NEW FOLDER
+// CONNECT SELECTED FOLDER
 // ============================================================
 
 async function chooseFolder() {
 
-    if (!("showDirectoryPicker" in window)) {
+    if (
+        !("showDirectoryPicker" in window)
+    ) {
+
+        setConnectionStatus(
+            "مرورگر از اتصال پوشه پشتیبانی نمی‌کند",
+            "error"
+        );
+
 
         showToast(
-            "این مرورگر از اتصال مستقیم به پوشه پشتیبانی نمی‌کند."
+            "برای اتصال مستقیم به پوشه از Chrome یا مرورگر سازگار استفاده کنید."
         );
+
 
         return false;
     }
 
+
     try {
 
-        const handle =
+        setConnectionStatus(
+            "در حال اتصال به پوشه...",
+            "warning"
+        );
+
+
+        const selectedHandle =
             await window.showDirectoryPicker({
                 mode: "readwrite"
             });
 
+
+        // ابتدا Handle جدید را بررسی می‌کنیم.
+
         const permission =
-            await requestFolderPermission(
-                handle
+            await getPermissionState(
+                selectedHandle
             );
 
-        if (!permission) {
 
-            showToast(
-                "اجازه دسترسی به پوشه داده نشد."
-            );
+        if (
+            permission !== "granted"
+        ) {
 
-            return false;
+            const requested =
+                await selectedHandle.requestPermission({
+                    mode: "readwrite"
+                });
+
+
+            if (
+                requested !== "granted"
+            ) {
+
+                setConnectionStatus(
+                    "اجازه پوشه داده نشد",
+                    "error"
+                );
+
+
+                showToast(
+                    "اجازه دسترسی به پوشه داده نشد."
+                );
+
+
+                return false;
+            }
         }
 
-        folderHandle =
-            handle;
 
-        // Handle را ذخیره می‌کنیم
-        // تا دفعه بعد دوباره انتخاب نشود.
+        folderHandle =
+            selectedHandle;
+
+
+        // Handle را برای Refresh بعدی نگه می‌داریم.
+
         await saveFolderHandle(
             folderHandle
         );
 
-        // اطلاعات قبلی را می‌خوانیم.
+
+        // بسیار مهم:
+        // اول فایل قبلی را می‌خوانیم.
+        // هیچ‌وقت قبل از خواندن فایل، دیتابیس را صفر نمی‌کنیم.
+
         await loadDataFromFolder();
+
 
         setConnectionStatus(
             "متصل به پوشه: " +
-            folderHandle.name
+            folderHandle.name,
+            "connected"
         );
 
+
         await refreshAll();
+
 
         showToast(
             "پوشه متصل شد و اطلاعات قبلی بازیابی شد."
         );
 
+
         return true;
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            "Folder selection error:",
+            error
+        );
 
-        if (error.name !== "AbortError") {
 
-            showToast(
-                error.message ||
-                "اتصال پوشه ناموفق بود."
+        if (
+            error.name ===
+            "AbortError"
+        ) {
+
+            const cached =
+                loadLocalSnapshot();
+
+
+            if (
+                cached &&
+                databaseHasData(cached)
+            ) {
+
+                database = cached;
+
+                await refreshAll();
+            }
+
+
+            return false;
+        }
+
+
+        setConnectionStatus(
+            "اتصال ناموفق بود",
+            "error"
+        );
+
+
+        showToast(
+            error.message ||
+            "اتصال پوشه ناموفق بود."
+        );
+
+
+        return false;
+    }
+}
+
+
+// ============================================================
+// AUTO CONNECT
+//
+// مهم‌ترین بخش برای Refresh.
+// ============================================================
+
+async function tryAutoConnect() {
+
+    setConnectionStatus(
+        "در حال بررسی اتصال پوشه...",
+        "warning"
+    );
+
+
+    // اول Snapshot را می‌خوانیم.
+    // این باعث می‌شود صفحه در گوشی هیچ‌وقت بی‌دلیل صفر نشود.
+
+    const cached =
+        loadLocalSnapshot();
+
+
+    if (
+        cached &&
+        databaseHasData(cached)
+    ) {
+
+        database =
+            cached;
+
+
+        await refreshAll();
+    }
+
+
+    let savedHandle = null;
+
+
+    try {
+
+        savedHandle =
+            await getFolderHandle();
+
+    } catch (error) {
+
+        console.warn(
+            "Could not read saved folder handle:",
+            error
+        );
+    }
+
+
+    if (!savedHandle) {
+
+        if (
+            cached &&
+            databaseHasData(cached)
+        ) {
+
+            setConnectionStatus(
+                "اطلاعات قبلی موجود است؛ اتصال پوشه نیاز به تأیید دارد",
+                "warning"
+            );
+
+        } else {
+
+            setConnectionStatus(
+                "پوشه هنوز متصل نشده است",
+                "warning"
             );
         }
+
+
+        return false;
+    }
+
+
+    folderHandle =
+        savedHandle;
+
+
+    try {
+
+        const permission =
+            await getPermissionState(
+                folderHandle
+            );
+
+
+        // حالت ایده‌آل:
+        // مرورگر اجازه را نگه داشته است.
+
+        if (
+            permission === "granted"
+        ) {
+
+            await loadDataFromFolder();
+
+
+            setConnectionStatus(
+                "متصل به پوشه: " +
+                folderHandle.name,
+                "connected"
+            );
+
+
+            await refreshAll();
+
+
+            return true;
+        }
+
+
+        // در موبایل ممکن است Handle وجود داشته باشد
+        // ولی queryPermission دوباره granted نباشد.
+        //
+        // اینجا اطلاعات را صفر نمی‌کنیم.
+
+        if (
+            cached &&
+            databaseHasData(cached)
+        ) {
+
+            database =
+                cached;
+
+
+            await refreshAll();
+
+
+            setConnectionStatus(
+                "اطلاعات محفوظ است؛ تأیید پوشه لازم است",
+                "warning"
+            );
+
+
+            return false;
+        }
+
+
+        setConnectionStatus(
+            "برای اتصال دوباره روی 📁 بزنید",
+            "warning"
+        );
+
+
+        return false;
+
+    } catch (error) {
+
+        console.error(
+            "Auto connection failed:",
+            error
+        );
+
+
+        // هرگز اینجا database را خالی نمی‌کنیم.
+
+        if (
+            cached &&
+            databaseHasData(cached)
+        ) {
+
+            database =
+                cached;
+
+
+            await refreshAll();
+
+
+            setConnectionStatus(
+                "اطلاعات محفوظ است؛ اتصال پوشه نیاز به تأیید دارد",
+                "warning"
+            );
+
+        } else {
+
+            setConnectionStatus(
+                "برای اتصال پوشه روی 📁 بزنید",
+                "warning"
+            );
+        }
+
 
         return false;
     }
@@ -606,6 +1316,7 @@ async function chooseFolder() {
 // ============================================================
 
 async function getProducts() {
+
     return database.products;
 }
 
@@ -619,12 +1330,18 @@ async function getProduct(id) {
 }
 
 
-async function getProductByBarcode(barcode) {
+async function getProductByBarcode(
+    barcode
+) {
 
     return database.products.find(
         product =>
-            String(product.barcode).trim() ===
-            String(barcode).trim()
+            String(
+                product.barcode
+            ).trim() ===
+            String(
+                barcode
+            ).trim()
     );
 }
 
@@ -633,10 +1350,14 @@ async function getProductByBarcode(barcode) {
 // INVENTORY
 // ============================================================
 
-async function getQuantity(productId) {
+async function getQuantity(
+    productId
+) {
 
     return Number(
-        database.inventory[productId]?.quantity
+        database.inventory[
+            productId
+        ]?.quantity
     ) || 0;
 }
 
@@ -646,7 +1367,9 @@ async function setQuantity(
     quantity
 ) {
 
-    database.inventory[productId] = {
+    database.inventory[
+        productId
+    ] = {
 
         productId:
             productId,
@@ -656,12 +1379,13 @@ async function setQuantity(
 
         updatedAt:
             nowISO()
+
     };
 }
 
 
 // ============================================================
-// SAVE PRODUCT
+// PRODUCT SAVE
 // ============================================================
 
 async function saveProduct(product) {
@@ -670,6 +1394,7 @@ async function saveProduct(product) {
         await getProductByBarcode(
             product.barcode
         );
+
 
     if (
         existing &&
@@ -681,11 +1406,13 @@ async function saveProduct(product) {
         );
     }
 
+
     const index =
         database.products.findIndex(
             item =>
                 item.id === product.id
         );
+
 
     if (index >= 0) {
 
@@ -699,8 +1426,11 @@ async function saveProduct(product) {
         );
     }
 
+
     if (
-        !database.inventory[product.id]
+        !database.inventory[
+            product.id
+        ]
     ) {
 
         await setQuantity(
@@ -709,7 +1439,18 @@ async function saveProduct(product) {
         );
     }
 
-    await saveDatabase();
+
+    const saved =
+        await saveDatabase();
+
+
+    if (!saved) {
+
+        throw new Error(
+            "کالا ذخیره نشد."
+        );
+    }
+
 
     return product;
 }
@@ -723,9 +1464,10 @@ document
     .getElementById("productForm")
     .addEventListener(
         "submit",
-        async function (event) {
+        async function(event) {
 
             event.preventDefault();
+
 
             try {
 
@@ -736,6 +1478,7 @@ document
                         )
                         .value;
 
+
                 const barcode =
                     document
                         .getElementById(
@@ -743,6 +1486,7 @@ document
                         )
                         .value
                         .trim();
+
 
                 const name =
                     document
@@ -752,6 +1496,7 @@ document
                         .value
                         .trim();
 
+
                 const category =
                     document
                         .getElementById(
@@ -759,6 +1504,7 @@ document
                         )
                         .value
                         .trim();
+
 
                 const purchasePrice =
                     Number(
@@ -769,6 +1515,7 @@ document
                             .value
                     ) || 0;
 
+
                 const salePrice =
                     Number(
                         document
@@ -778,12 +1525,14 @@ document
                             .value
                     ) || 0;
 
+
                 const unit =
                     document
                         .getElementById(
                             "productUnit"
                         )
                         .value;
+
 
                 const initialQuantity =
                     Number(
@@ -794,30 +1543,41 @@ document
                             .value
                     ) || 0;
 
+
                 if (!barcode) {
+
                     throw new Error(
                         "بارکد را وارد کنید."
                     );
                 }
 
+
                 if (!name) {
+
                     throw new Error(
                         "نام کالا را وارد کنید."
                     );
                 }
 
+
                 let product;
+
 
                 if (id) {
 
                     product =
-                        await getProduct(id);
+                        await getProduct(
+                            id
+                        );
+
 
                     if (!product) {
+
                         throw new Error(
                             "کالا پیدا نشد."
                         );
                     }
+
 
                     product.barcode =
                         barcode;
@@ -875,18 +1635,23 @@ document
 
                         initialQuantity:
                             initialQuantity
+
                     };
                 }
+
 
                 await saveProduct(
                     product
                 );
 
+
                 closeModal(
                     "productModal"
                 );
 
+
                 event.target.reset();
+
 
                 document
                     .getElementById(
@@ -894,19 +1659,23 @@ document
                     )
                     .value = "";
 
+
                 document
                     .getElementById(
                         "initialQuantity"
                     )
                     .value = "0";
 
+
                 await refreshAll();
+
 
                 showToast(
                     id
                         ? "کالا ویرایش شد."
                         : "کالا با موفقیت ذخیره شد."
                 );
+
 
             } catch (error) {
 
@@ -915,6 +1684,7 @@ document
                     "ذخیره کالا ناموفق بود."
                 );
             }
+
         }
     );
 
@@ -923,10 +1693,15 @@ document
 // EDIT PRODUCT
 // ============================================================
 
-async function editProduct(productId) {
+async function editProduct(
+    productId
+) {
 
     const product =
-        await getProduct(productId);
+        await getProduct(
+            productId
+        );
+
 
     if (!product) {
 
@@ -937,12 +1712,14 @@ async function editProduct(productId) {
         return;
     }
 
+
     document
         .getElementById(
             "productModalTitle"
         )
         .textContent =
             "ویرایش کالا";
+
 
     document
         .getElementById(
@@ -951,12 +1728,14 @@ async function editProduct(productId) {
         .value =
             product.id;
 
+
     document
         .getElementById(
             "productBarcode"
         )
         .value =
             product.barcode;
+
 
     document
         .getElementById(
@@ -965,12 +1744,14 @@ async function editProduct(productId) {
         .value =
             product.name;
 
+
     document
         .getElementById(
             "productCategory"
         )
         .value =
             product.category || "";
+
 
     document
         .getElementById(
@@ -979,12 +1760,14 @@ async function editProduct(productId) {
         .value =
             product.purchasePrice || 0;
 
+
     document
         .getElementById(
             "salePrice"
         )
         .value =
             product.salePrice || 0;
+
 
     document
         .getElementById(
@@ -993,12 +1776,14 @@ async function editProduct(productId) {
         .value =
             product.unit || "عدد";
 
+
     document
         .getElementById(
             "initialQuantity"
         )
         .value =
             0;
+
 
     openModal(
         "productModal"
@@ -1010,20 +1795,36 @@ async function editProduct(productId) {
 // DELETE PRODUCT
 // ============================================================
 
-async function deleteProduct(productId) {
+async function deleteProduct(
+    productId
+) {
 
     const product =
-        await getProduct(productId);
+        await getProduct(
+            productId
+        );
+
 
     if (!product) return;
+
 
     if (
         !confirm(
             `کالای «${product.name}» حذف شود؟`
         )
     ) {
+
         return;
     }
+
+
+    const oldProducts =
+        database.products;
+
+
+    const oldInventory =
+        database.inventory;
+
 
     database.products =
         database.products.filter(
@@ -1031,9 +1832,11 @@ async function deleteProduct(productId) {
                 item.id !== productId
         );
 
+
     delete database.inventory[
         productId
     ];
+
 
     cart =
         cart.filter(
@@ -1042,9 +1845,25 @@ async function deleteProduct(productId) {
                 productId
         );
 
-    await saveDatabase();
+
+    const saved =
+        await saveDatabase();
+
+
+    if (!saved) {
+
+        database.products =
+            oldProducts;
+
+        database.inventory =
+            oldInventory;
+
+        return;
+    }
+
 
     await refreshAll();
+
 
     showToast(
         "کالا حذف شد."
@@ -1056,47 +1875,64 @@ async function deleteProduct(productId) {
 // PRODUCTS LIST
 // ============================================================
 
-async function renderProducts(search = "") {
+async function renderProducts(
+    search = ""
+) {
 
     const container =
         document.getElementById(
             "productsList"
         );
 
+
     let products =
         await getProducts();
 
+
     const text =
-        search.trim().toLowerCase();
+        String(search || "")
+            .trim()
+            .toLowerCase();
+
 
     if (text) {
 
         products =
             products.filter(
                 product =>
-                    product.name
-                        .toLowerCase()
-                        .includes(text)
+                    String(
+                        product.name || ""
+                    )
+                    .toLowerCase()
+                    .includes(text)
                     ||
-                    String(product.barcode)
-                        .toLowerCase()
-                        .includes(text)
+                    String(
+                        product.barcode || ""
+                    )
+                    .toLowerCase()
+                    .includes(text)
                     ||
                     String(
                         product.category || ""
                     )
-                        .toLowerCase()
-                        .includes(text)
+                    .toLowerCase()
+                    .includes(text)
             );
     }
 
-    products.sort(
-        (a, b) =>
-            String(b.createdAt)
-                .localeCompare(
-                    String(a.createdAt)
+
+    products =
+        [...products].sort(
+            (a, b) =>
+                String(
+                    b.createdAt || ""
+                ).localeCompare(
+                    String(
+                        a.createdAt || ""
+                    )
                 )
-    );
+        );
+
 
     if (!products.length) {
 
@@ -1108,22 +1944,39 @@ async function renderProducts(search = "") {
         return;
     }
 
+
     let html = "";
 
-    for (const product of products) {
+
+    for (
+        const product of products
+    ) {
 
         const quantity =
             await getQuantity(
                 product.id
             );
 
-        let stockClass = "good";
 
-        if (quantity <= 0) {
-            stockClass = "empty";
-        } else if (quantity <= 5) {
-            stockClass = "low";
+        let stockClass =
+            "good";
+
+
+        if (
+            quantity <= 0
+        ) {
+
+            stockClass =
+                "empty";
+
+        } else if (
+            quantity <= 5
+        ) {
+
+            stockClass =
+                "low";
         }
+
 
         html += `
 
@@ -1134,14 +1987,19 @@ async function renderProducts(search = "") {
                 <div class="product-info">
 
                     <div class="product-name">
-                        ${escapeHTML(product.name)}
+                        ${escapeHTML(
+                            product.name
+                        )}
                     </div>
 
                     <div class="product-barcode">
-                        ${escapeHTML(product.barcode)}
+                        ${escapeHTML(
+                            product.barcode
+                        )}
                     </div>
 
                 </div>
+
 
                 <div class="product-price">
 
@@ -1150,20 +2008,29 @@ async function renderProducts(search = "") {
                     </small>
 
                     <strong>
-                        ${formatMoney(product.salePrice)}
+                        ${formatMoney(
+                            product.salePrice
+                        )}
                     </strong>
 
                 </div>
 
             </div>
 
+
             <div class="product-bottom">
 
                 <div class="stock ${stockClass}">
                     موجودی:
-                    ${quantity.toLocaleString("fa-IR")}
-                    ${escapeHTML(product.unit || "عدد")}
+                    ${quantity.toLocaleString(
+                        "fa-IR"
+                    )}
+                    ${escapeHTML(
+                        product.unit ||
+                        "عدد"
+                    )}
                 </div>
+
 
                 <div class="product-actions">
 
@@ -1196,44 +2063,59 @@ async function renderProducts(search = "") {
             </div>
 
         </div>
+
         `;
     }
 
-    container.innerHTML = html;
+
+    container.innerHTML =
+        html;
 }
 
 
 // ============================================================
-// INVENTORY
+// INVENTORY LIST
 // ============================================================
 
-async function renderInventory(search = "") {
+async function renderInventory(
+    search = ""
+) {
 
     const container =
         document.getElementById(
             "inventoryList"
         );
 
+
     let products =
         await getProducts();
 
+
     const text =
-        search.trim().toLowerCase();
+        String(search || "")
+            .trim()
+            .toLowerCase();
+
 
     if (text) {
 
         products =
             products.filter(
                 product =>
-                    product.name
-                        .toLowerCase()
-                        .includes(text)
+                    String(
+                        product.name || ""
+                    )
+                    .toLowerCase()
+                    .includes(text)
                     ||
-                    String(product.barcode)
-                        .toLowerCase()
-                        .includes(text)
+                    String(
+                        product.barcode || ""
+                    )
+                    .toLowerCase()
+                    .includes(text)
             );
     }
+
 
     if (!products.length) {
 
@@ -1245,22 +2127,39 @@ async function renderInventory(search = "") {
         return;
     }
 
+
     let html = "";
 
-    for (const product of products) {
+
+    for (
+        const product of products
+    ) {
 
         const quantity =
             await getQuantity(
                 product.id
             );
 
-        let stockClass = "good";
 
-        if (quantity <= 0) {
-            stockClass = "empty";
-        } else if (quantity <= 5) {
-            stockClass = "low";
+        let stockClass =
+            "good";
+
+
+        if (
+            quantity <= 0
+        ) {
+
+            stockClass =
+                "empty";
+
+        } else if (
+            quantity <= 5
+        ) {
+
+            stockClass =
+                "low";
         }
+
 
         html += `
 
@@ -1271,27 +2170,40 @@ async function renderInventory(search = "") {
                 <div class="product-info">
 
                     <div class="product-name">
-                        ${escapeHTML(product.name)}
+                        ${escapeHTML(
+                            product.name
+                        )}
                     </div>
 
                     <div class="product-barcode">
-                        ${escapeHTML(product.barcode)}
+                        ${escapeHTML(
+                            product.barcode
+                        )}
                     </div>
 
                 </div>
 
+
                 <div class="stock ${stockClass}">
-                    ${quantity.toLocaleString("fa-IR")}
-                    ${escapeHTML(product.unit || "عدد")}
+                    ${quantity.toLocaleString(
+                        "fa-IR"
+                    )}
+                    ${escapeHTML(
+                        product.unit ||
+                        "عدد"
+                    )}
                 </div>
 
             </div>
+
 
             <div class="product-bottom">
 
                 <span>
                     قیمت فروش:
-                    ${formatMoney(product.salePrice)}
+                    ${formatMoney(
+                        product.salePrice
+                    )}
                 </span>
 
                 <button
@@ -1305,10 +2217,13 @@ async function renderInventory(search = "") {
             </div>
 
         </div>
+
         `;
     }
 
-    container.innerHTML = html;
+
+    container.innerHTML =
+        html;
 }
 
 
@@ -1316,15 +2231,24 @@ async function renderInventory(search = "") {
 // STOCK MODAL
 // ============================================================
 
-async function openStockModal(productId) {
+async function openStockModal(
+    productId
+) {
 
     const product =
-        await getProduct(productId);
+        await getProduct(
+            productId
+        );
+
 
     if (!product) return;
 
+
     const quantity =
-        await getQuantity(productId);
+        await getQuantity(
+            productId
+        );
+
 
     document
         .getElementById(
@@ -1333,6 +2257,7 @@ async function openStockModal(productId) {
         .value =
             productId;
 
+
     document
         .getElementById(
             "stockProductName"
@@ -1340,11 +2265,13 @@ async function openStockModal(productId) {
         .textContent =
             `${product.name} — موجودی فعلی: ${quantity}`;
 
+
     document
         .getElementById(
             "stockAmount"
         )
         .value = "";
+
 
     document
         .getElementById(
@@ -1352,6 +2279,7 @@ async function openStockModal(productId) {
         )
         .value =
             "increase";
+
 
     openModal(
         "stockModal"
@@ -1367,9 +2295,10 @@ document
     .getElementById("stockForm")
     .addEventListener(
         "submit",
-        async function (event) {
+        async function(event) {
 
             event.preventDefault();
+
 
             try {
 
@@ -1380,12 +2309,14 @@ document
                         )
                         .value;
 
+
                 const action =
                     document
                         .getElementById(
                             "stockAction"
                         )
                         .value;
+
 
                 const amount =
                     Number(
@@ -1396,41 +2327,55 @@ document
                             .value
                     );
 
+
                 if (
                     !Number.isFinite(amount) ||
                     amount < 0
                 ) {
+
                     throw new Error(
                         "مقدار نامعتبر است."
                     );
                 }
+
 
                 const current =
                     await getQuantity(
                         productId
                     );
 
+
                 let newQuantity;
 
+
                 if (
-                    action === "increase"
+                    action ===
+                    "increase"
                 ) {
 
                     newQuantity =
-                        current + amount;
+                        current +
+                        amount;
 
                 } else if (
-                    action === "decrease"
+                    action ===
+                    "decrease"
                 ) {
 
-                    if (amount > current) {
+                    if (
+                        amount >
+                        current
+                    ) {
+
                         throw new Error(
                             "موجودی کافی نیست."
                         );
                     }
 
+
                     newQuantity =
-                        current - amount;
+                        current -
+                        amount;
 
                 } else {
 
@@ -1438,22 +2383,32 @@ document
                         amount;
                 }
 
+
                 await setQuantity(
                     productId,
                     newQuantity
                 );
 
-                await saveDatabase();
+
+                const saved =
+                    await saveDatabase();
+
+
+                if (!saved) return;
+
 
                 closeModal(
                     "stockModal"
                 );
 
+
                 await refreshAll();
+
 
                 showToast(
                     "موجودی ذخیره شد."
                 );
+
 
             } catch (error) {
 
@@ -1461,6 +2416,7 @@ document
                     error.message
                 );
             }
+
         }
     );
 
@@ -1469,17 +2425,28 @@ document
 // CART
 // ============================================================
 
-async function addToCart(productId) {
+async function addToCart(
+    productId
+) {
 
     const product =
-        await getProduct(productId);
+        await getProduct(
+            productId
+        );
+
 
     if (!product) return;
 
-    const quantity =
-        await getQuantity(productId);
 
-    if (quantity <= 0) {
+    const quantity =
+        await getQuantity(
+            productId
+        );
+
+
+    if (
+        quantity <= 0
+    ) {
 
         showToast(
             "این کالا موجود نیست."
@@ -1488,12 +2455,14 @@ async function addToCart(productId) {
         return;
     }
 
+
     const existing =
         cart.find(
             item =>
                 item.productId ===
                 productId
         );
+
 
     if (existing) {
 
@@ -1509,24 +2478,30 @@ async function addToCart(productId) {
             return;
         }
 
+
         existing.quantity++;
 
     } else {
 
         cart.push({
+
             productId:
                 productId,
 
             quantity:
                 1
+
         });
     }
 
-    renderCart();
+
+    await renderCart();
 }
 
 
-function removeFromCart(productId) {
+function removeFromCart(
+    productId
+) {
 
     cart =
         cart.filter(
@@ -1534,6 +2509,7 @@ function removeFromCart(productId) {
                 item.productId !==
                 productId
         );
+
 
     renderCart();
 }
@@ -1551,17 +2527,24 @@ async function changeCartQuantity(
                 productId
         );
 
+
     if (!item) return;
+
 
     const stock =
         await getQuantity(
             productId
         );
 
-    const newQuantity =
-        item.quantity + change;
 
-    if (newQuantity <= 0) {
+    const newQuantity =
+        item.quantity +
+        change;
+
+
+    if (
+        newQuantity <= 0
+    ) {
 
         removeFromCart(
             productId
@@ -1570,7 +2553,11 @@ async function changeCartQuantity(
         return;
     }
 
-    if (newQuantity > stock) {
+
+    if (
+        newQuantity >
+        stock
+    ) {
 
         showToast(
             "موجودی کافی نیست."
@@ -1579,12 +2566,18 @@ async function changeCartQuantity(
         return;
     }
 
+
     item.quantity =
         newQuantity;
 
-    renderCart();
+
+    await renderCart();
 }
 
+
+// ============================================================
+// CART RENDER
+// ============================================================
 
 async function renderCart() {
 
@@ -1593,12 +2586,14 @@ async function renderCart() {
             "cartList"
         );
 
+
     if (!cart.length) {
 
         container.innerHTML =
             `<div class="empty">
                 سبد فروش خالی است.
             </div>`;
+
 
         document
             .getElementById(
@@ -1607,26 +2602,38 @@ async function renderCart() {
             .textContent =
                 "0 تومان";
 
+
         return;
     }
 
+
     let html = "";
+
     let total = 0;
 
-    for (const item of cart) {
+
+    for (
+        const item of cart
+    ) {
 
         const product =
             await getProduct(
                 item.productId
             );
 
+
         if (!product) continue;
 
+
         const itemTotal =
-            Number(product.salePrice) *
+            Number(
+                product.salePrice
+            ) *
             item.quantity;
 
+
         total += itemTotal;
+
 
         html += `
 
@@ -1635,16 +2642,23 @@ async function renderCart() {
             <div class="cart-info">
 
                 <strong>
-                    ${escapeHTML(product.name)}
+                    ${escapeHTML(
+                        product.name
+                    )}
                 </strong>
 
                 <small>
-                    ${formatMoney(product.salePrice)}
+                    ${formatMoney(
+                        product.salePrice
+                    )}
                     ×
-                    ${item.quantity.toLocaleString("fa-IR")}
+                    ${item.quantity.toLocaleString(
+                        "fa-IR"
+                    )}
                 </small>
 
             </div>
+
 
             <div class="cart-controls">
 
@@ -1657,7 +2671,9 @@ async function renderCart() {
                 </button>
 
                 <strong>
-                    ${item.quantity.toLocaleString("fa-IR")}
+                    ${item.quantity.toLocaleString(
+                        "fa-IR"
+                    )}
                 </strong>
 
                 <button
@@ -1671,11 +2687,14 @@ async function renderCart() {
             </div>
 
         </div>
+
         `;
     }
 
+
     container.innerHTML =
         html;
+
 
     document
         .getElementById(
@@ -1701,22 +2720,29 @@ async function checkout() {
         return;
     }
 
+
     const saleId =
         generateId("sale");
 
+
     const createdAt =
         nowISO();
+
 
     let total = 0;
 
     const saleItems = [];
 
-    for (const item of cart) {
+
+    for (
+        const item of cart
+    ) {
 
         const product =
             await getProduct(
                 item.productId
             );
+
 
         if (!product) {
 
@@ -1725,10 +2751,12 @@ async function checkout() {
             );
         }
 
+
         const stock =
             await getQuantity(
                 item.productId
             );
+
 
         if (
             item.quantity >
@@ -1740,11 +2768,16 @@ async function checkout() {
             );
         }
 
+
         const itemTotal =
-            Number(product.salePrice) *
+            Number(
+                product.salePrice
+            ) *
             item.quantity;
 
+
         total += itemTotal;
+
 
         saleItems.push({
 
@@ -1763,12 +2796,16 @@ async function checkout() {
                 item.quantity,
 
             unitPrice:
-                Number(product.salePrice),
+                Number(
+                    product.salePrice
+                ),
 
             totalPrice:
                 itemTotal
+
         });
     }
+
 
     database.sales.push({
 
@@ -1786,33 +2823,45 @@ async function checkout() {
 
         createdAt:
             createdAt
+
     });
 
-    for (const item of saleItems) {
+
+    for (
+        const item of saleItems
+    ) {
 
         database.sale_items.push(
             item
         );
+
 
         const current =
             await getQuantity(
                 item.productId
             );
 
+
         await setQuantity(
             item.productId,
-            current - item.quantity
+            current -
+            item.quantity
         );
     }
+
 
     const saved =
         await saveDatabase();
 
+
     if (!saved) return;
+
 
     cart = [];
 
+
     await refreshAll();
+
 
     showToast(
         "فروش با موفقیت در پوشه ذخیره شد."
@@ -1824,13 +2873,16 @@ async function checkout() {
 // TODAY SALES
 // ============================================================
 
-function isToday(isoDate) {
+function isToday(
+    isoDate
+) {
 
     const date =
         new Date(isoDate);
 
     const now =
         new Date();
+
 
     return (
         date.getFullYear() ===
@@ -1865,9 +2917,13 @@ async function renderDashboard() {
     const products =
         await getProducts();
 
+
     let totalStock = 0;
 
-    for (const product of products) {
+
+    for (
+        const product of products
+    ) {
 
         totalStock +=
             await getQuantity(
@@ -1875,8 +2931,10 @@ async function renderDashboard() {
             );
     }
 
+
     const sales =
         await getTodaySales();
+
 
     const salesAmount =
         sales.reduce(
@@ -1893,6 +2951,7 @@ async function renderDashboard() {
             0
         );
 
+
     document
         .getElementById(
             "totalProducts"
@@ -1901,6 +2960,7 @@ async function renderDashboard() {
             products.length.toLocaleString(
                 "fa-IR"
             );
+
 
     document
         .getElementById(
@@ -1911,6 +2971,7 @@ async function renderDashboard() {
                 "fa-IR"
             );
 
+
     document
         .getElementById(
             "todaySales"
@@ -1920,6 +2981,7 @@ async function renderDashboard() {
                 "fa-IR"
             );
 
+
     document
         .getElementById(
             "todaySalesAmount"
@@ -1928,6 +2990,7 @@ async function renderDashboard() {
             formatMoney(
                 salesAmount
             );
+
 
     await renderLowStock();
 }
@@ -1944,29 +3007,40 @@ async function renderLowStock() {
             "lowStockList"
         );
 
+
     const products =
         await getProducts();
 
+
     const lowStock = [];
 
-    for (const product of products) {
+
+    for (
+        const product of products
+    ) {
 
         const quantity =
             await getQuantity(
                 product.id
             );
 
-        if (quantity <= 5) {
+
+        if (
+            quantity <= 5
+        ) {
 
             lowStock.push({
+
                 product:
                     product,
 
                 quantity:
                     quantity
+
             });
         }
     }
+
 
     if (!lowStock.length) {
 
@@ -1978,10 +3052,15 @@ async function renderLowStock() {
         return;
     }
 
+
     let html = "";
 
+
     for (
-        const item of lowStock.slice(0, 5)
+        const item of lowStock.slice(
+            0,
+            5
+        )
     ) {
 
         html += `
@@ -2022,8 +3101,10 @@ async function renderLowStock() {
             </div>
 
         </div>
+
         `;
     }
+
 
     container.innerHTML =
         html;
@@ -2039,15 +3120,20 @@ async function renderInventorySummary() {
     const products =
         await getProducts();
 
+
     let total = 0;
 
-    for (const product of products) {
+
+    for (
+        const product of products
+    ) {
 
         total +=
             await getQuantity(
                 product.id
             );
     }
+
 
     document
         .getElementById(
@@ -2057,6 +3143,7 @@ async function renderInventorySummary() {
             products.length.toLocaleString(
                 "fa-IR"
             );
+
 
     document
         .getElementById(
@@ -2073,17 +3160,21 @@ async function renderInventorySummary() {
 // SALE SEARCH
 // ============================================================
 
-async function renderSaleSearch(text) {
+async function renderSaleSearch(
+    text
+) {
 
     const container =
         document.getElementById(
             "saleSearchResults"
         );
 
+
     text =
         String(text || "")
             .trim()
             .toLowerCase();
+
 
     if (!text) {
 
@@ -2092,24 +3183,32 @@ async function renderSaleSearch(text) {
         return;
     }
 
+
     const products =
         await getProducts();
+
 
     const results =
         products
             .filter(
                 product =>
-                    product.name
-                        .toLowerCase()
-                        .includes(text)
+                    String(
+                        product.name || ""
+                    )
+                    .toLowerCase()
+                    .includes(text)
                     ||
                     String(
-                        product.barcode
+                        product.barcode || ""
                     )
-                        .toLowerCase()
-                        .includes(text)
+                    .toLowerCase()
+                    .includes(text)
             )
-            .slice(0, 10);
+            .slice(
+                0,
+                10
+            );
+
 
     if (!results.length) {
 
@@ -2121,14 +3220,19 @@ async function renderSaleSearch(text) {
         return;
     }
 
+
     let html = "";
 
-    for (const product of results) {
+
+    for (
+        const product of results
+    ) {
 
         const quantity =
             await getQuantity(
                 product.id
             );
+
 
         html += `
 
@@ -2158,6 +3262,7 @@ async function renderSaleSearch(text) {
 
             </div>
 
+
             <button
                 class="small-button"
                 onclick="addToCart('${product.id}')"
@@ -2167,8 +3272,10 @@ async function renderSaleSearch(text) {
             </button>
 
         </div>
+
         `;
     }
+
 
     container.innerHTML =
         html;
@@ -2179,7 +3286,9 @@ async function renderSaleSearch(text) {
 // NAVIGATION
 // ============================================================
 
-function showPage(pageName) {
+function showPage(
+    pageName
+) {
 
     document
         .querySelectorAll(".page")
@@ -2190,10 +3299,13 @@ function showPage(pageName) {
                 )
         );
 
+
     const page =
         document.getElementById(
-            pageName + "Page"
+            pageName +
+            "Page"
         );
+
 
     if (page) {
 
@@ -2201,6 +3313,7 @@ function showPage(pageName) {
             "active"
         );
     }
+
 
     document
         .querySelectorAll(".nav-btn")
@@ -2212,6 +3325,7 @@ function showPage(pageName) {
                     button.dataset.page ===
                         pageName
                 );
+
             }
         );
 }
@@ -2226,8 +3340,12 @@ function openModal(id) {
     const modal =
         document.getElementById(id);
 
+
     if (modal) {
-        modal.classList.add("show");
+
+        modal.classList.add(
+            "show"
+        );
     }
 }
 
@@ -2237,14 +3355,20 @@ function closeModal(id) {
     const modal =
         document.getElementById(id);
 
+
     if (modal) {
-        modal.classList.remove("show");
+
+        modal.classList.remove(
+            "show"
+        );
     }
 }
 
 
 document
-    .querySelectorAll("[data-close-modal]")
+    .querySelectorAll(
+        "[data-close-modal]"
+    )
     .forEach(
         button => {
 
@@ -2253,10 +3377,13 @@ document
                 () => {
 
                     closeModal(
-                        button.dataset.closeModal
+                        button.dataset
+                            .closeModal
                     );
+
                 }
             );
+
         }
     );
 
@@ -2275,12 +3402,15 @@ document
                         modal
                     ) {
 
-                        modal.classList.remove(
-                            "show"
-                        );
+                        modal.classList
+                            .remove(
+                                "show"
+                            );
                     }
+
                 }
             );
+
         }
     );
 
@@ -2298,11 +3428,13 @@ function openAddProductModal() {
         .textContent =
             "افزودن کالا";
 
+
     document
         .getElementById(
             "productForm"
         )
         .reset();
+
 
     document
         .getElementById(
@@ -2310,11 +3442,13 @@ function openAddProductModal() {
         )
         .value = "";
 
+
     document
         .getElementById(
             "initialQuantity"
         )
         .value = "0";
+
 
     openModal(
         "productModal"
@@ -2336,30 +3470,49 @@ document
                 async () => {
 
                     const page =
-                        button.dataset.page;
+                        button.dataset
+                            .page;
 
-                    showPage(page);
+
+                    showPage(
+                        page
+                    );
+
 
                     if (
-                        page === "products"
+                        page ===
+                        "products"
                     ) {
+
                         await renderProducts();
+
                     }
 
+
                     if (
-                        page === "inventory"
+                        page ===
+                        "inventory"
                     ) {
+
                         await renderInventory();
+
                         await renderInventorySummary();
+
                     }
 
+
                     if (
-                        page === "sale"
+                        page ===
+                        "sale"
                     ) {
+
                         await renderCart();
+
                     }
+
                 }
             );
+
         }
     );
 
@@ -2396,7 +3549,9 @@ document
         "click",
         () => {
 
-            showPage("products");
+            showPage(
+                "products"
+            );
 
             openAddProductModal();
 
@@ -2412,7 +3567,9 @@ document
         "click",
         () => {
 
-            showPage("sale");
+            showPage(
+                "sale"
+            );
 
             renderCart();
 
@@ -2503,6 +3660,7 @@ document
                     "ثبت فروش ناموفق بود."
                 );
             }
+
         }
     );
 
@@ -2542,12 +3700,14 @@ document
 
                 event.preventDefault();
 
+
                 document
                     .getElementById(
                         "productName"
                     )
                     .focus();
             }
+
         }
     );
 
@@ -2576,6 +3736,7 @@ async function refreshAll() {
 
     await renderDashboard();
 
+
     await renderProducts(
         document
             .getElementById(
@@ -2583,6 +3744,7 @@ async function refreshAll() {
             )
             .value
     );
+
 
     await renderInventory(
         document
@@ -2592,10 +3754,75 @@ async function refreshAll() {
             .value
     );
 
+
     await renderInventorySummary();
+
 
     await renderCart();
 }
+
+
+// ============================================================
+// PAGE VISIBILITY
+//
+// وقتی کاربر از برنامه خارج/وارد می‌شود یا گوشی تب را
+// دوباره فعال می‌کند، دوباره Handle را بررسی می‌کنیم.
+// ============================================================
+
+document.addEventListener(
+    "visibilitychange",
+    async () => {
+
+        if (
+            document.visibilityState !==
+            "visible"
+        ) {
+
+            return;
+        }
+
+
+        if (!folderHandle) {
+
+            return;
+        }
+
+
+        try {
+
+            const permission =
+                await getPermissionState(
+                    folderHandle
+                );
+
+
+            if (
+                permission === "granted"
+            ) {
+
+                await loadDataFromFolder();
+
+
+                setConnectionStatus(
+                    "متصل به پوشه: " +
+                    folderHandle.name,
+                    "connected"
+                );
+
+
+                await refreshAll();
+            }
+
+        } catch (error) {
+
+            console.warn(
+                "Visibility reconnect failed:",
+                error
+            );
+        }
+
+    }
+);
 
 
 // ============================================================
@@ -2604,85 +3831,108 @@ async function refreshAll() {
 
 async function initApp() {
 
-    if (
-        !("showDirectoryPicker" in window)
-    ) {
-
-        setConnectionStatus(
-            "مرورگر از اتصال پوشه پشتیبانی نمی‌کند"
-        );
-
-        showToast(
-            "برای این قابلیت از Chrome یا مرورگر سازگار استفاده کنید."
-        );
-
-        return;
-    }
-
-    setConnectionStatus(
-        "در حال بازیابی اطلاعات..."
-    );
-
     try {
 
-        // ====================================================
-        // مهم:
-        // اول Handle قبلی را پیدا می‌کنیم.
-        // ====================================================
+        // اول Snapshot را نمایش می‌دهیم.
+        // بنابراین صفحه در گوشی با صفر شروع نمی‌شود.
 
-        const handle =
-            await getFolderHandle();
+        const cached =
+            loadLocalSnapshot();
 
-        if (handle) {
 
-            folderHandle =
-                handle;
+        if (
+            cached &&
+            databaseHasData(cached)
+        ) {
 
-            const permission =
-                await getFolderPermission(
-                    folderHandle
-                );
+            database =
+                cached;
+
+
+            await refreshAll();
+        }
+
+
+        if (
+            !("showDirectoryPicker" in window)
+        ) {
+
+            setConnectionStatus(
+                "مرورگر از اتصال پوشه پشتیبانی نمی‌کند",
+                "error"
+            );
+
 
             if (
-                permission === "granted"
+                !cached ||
+                !databaseHasData(cached)
             ) {
 
-                // =================================================
-                // اینجا اطلاعات فایل قبلی خوانده می‌شود.
-                // =================================================
+                await refreshAll();
+            }
 
-                await loadDataFromFolder();
 
-                setConnectionStatus(
-                    "متصل به پوشه: " +
-                    folderHandle.name
-                );
+            showToast(
+                "برای اتصال مستقیم به پوشه از Chrome یا مرورگر سازگار استفاده کنید."
+            );
+
+
+            return;
+        }
+
+
+        // تلاش برای اتصال خودکار.
+
+        const connected =
+            await tryAutoConnect();
+
+
+        if (!connected) {
+
+            // بسیار مهم:
+            // اینجا database را createEmptyDatabase نمی‌کنیم.
+            // اطلاعات قبلی نباید صفر شود.
+
+            const currentData =
+                loadLocalSnapshot();
+
+
+            if (
+                currentData &&
+                databaseHasData(
+                    currentData
+                )
+            ) {
+
+                database =
+                    currentData;
+
 
                 await refreshAll();
 
-                console.log(
-                    "Bizadshop: اطلاعات قبلی بازیابی شد."
+
+                setConnectionStatus(
+                    "اطلاعات محفوظ است؛ برای دسترسی کامل روی 📁 بزنید",
+                    "warning"
                 );
 
-                return;
+            } else {
+
+                await refreshAll();
+
+
+                setConnectionStatus(
+                    "برای اتصال پوشه روی 📁 بزنید",
+                    "warning"
+                );
             }
         }
 
-        // ========================================================
-        // اگر Handle وجود ندارد یا مجوز واقعاً از بین رفته:
-        // دیتابیس را صفر نمی‌کنیم.
-        // ========================================================
 
-        setConnectionStatus(
-            "برای اتصال اولیه پوشه را انتخاب کنید"
+        console.log(
+            "Bizadshop آماده است."
         );
 
-        // اطلاعات خالی فقط در حافظه است.
-        // روی فایل قبلی چیزی نوشته نمی‌شود.
-        database =
-            createEmptyDatabase();
-
-        await refreshAll();
 
     } catch (error) {
 
@@ -2691,19 +3941,40 @@ async function initApp() {
             error
         );
 
-        // ========================================================
-        // خیلی مهم:
-        // در صورت خطای اتصال، اطلاعات موجود را با صفر
-        // جایگزین نمی‌کنیم.
-        // ========================================================
 
-        setConnectionStatus(
-            "اتصال پوشه نیاز به تأیید دارد"
-        );
+        // حتی در خطای راه‌اندازی هم اطلاعات را صفر نمی‌کنیم.
 
-        showToast(
-            "اتصال خودکار به پوشه انجام نشد. از ⚙️ پوشه را دوباره انتخاب کنید."
-        );
+        const cached =
+            loadLocalSnapshot();
+
+
+        if (
+            cached &&
+            databaseHasData(cached)
+        ) {
+
+            database =
+                cached;
+
+
+            await refreshAll();
+
+
+            setConnectionStatus(
+                "اطلاعات محفوظ است؛ اتصال پوشه نیاز به بررسی دارد",
+                "warning"
+            );
+
+        } else {
+
+            await refreshAll();
+
+
+            setConnectionStatus(
+                "برای اتصال پوشه روی 📁 بزنید",
+                "warning"
+            );
+        }
     }
 }
 
@@ -2713,7 +3984,8 @@ async function initApp() {
 // ============================================================
 
 if (
-    document.readyState === "loading"
+    document.readyState ===
+    "loading"
 ) {
 
     document.addEventListener(
@@ -2725,4 +3997,3 @@ if (
 
     initApp();
 }
-
