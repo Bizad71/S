@@ -1,3 +1,4 @@
+```javascript
 // ============================================================
 // Bizadshop
 // Permanent Folder Connection Edition
@@ -6,90 +7,48 @@
 // Bizadshop/bizadshop-data.json
 //
 // IndexedDB فقط Folder Handle را نگه می‌دارد.
-//
-// هدف:
-// 1. بعد از Refresh دوباره پوشه قبلی را پیدا کند.
-// 2. برای اتصال خودکار از queryPermission استفاده نکند.
-// 3. اگر دسترسی قبلی برقرار بود، مستقیم فایل را بخواند.
-// 4. اگر دسترسی واقعاً از بین رفته بود، فقط آن موقع درخواست اتصال کند.
-// 5. در صورت شکست اتصال، دیتابیس را خالی نکند.
-// 6. اطلاعات فروشگاه هرگز با Refresh صفر نشود.
 // ============================================================
 
+const DATA_FILE_NAME = "bizadshop-data.json";
 
-"use strict";
-
-
-// ============================================================
-// CONFIG
-// ============================================================
-
-const DATA_FILE_NAME =
-    "bizadshop-data.json";
-
-const HANDLE_DB_NAME =
-    "BizadshopFolderDB";
-
+const HANDLE_DB_NAME = "BizadshopFolderDB";
 const HANDLE_DB_VERSION = 1;
-
-const HANDLE_STORE =
-    "handles";
-
-const HANDLE_KEY =
-    "main-folder";
-
-
-// ============================================================
-// GLOBAL STATE
-// ============================================================
+const HANDLE_STORE = "handles";
+const HANDLE_KEY = "main-folder";
 
 let folderHandle = null;
 
-let folderConnected = false;
-
-let connectionChecking = false;
-
-let database =
-    createEmptyDatabase();
+let database = createEmptyDatabase();
 
 let cart = [];
 
 
 // ============================================================
-// BASIC UTILITIES
+// BASIC
 // ============================================================
 
 function generateId(prefix) {
-
     return (
         prefix +
         "_" +
         Date.now() +
         "_" +
-        Math.random()
-            .toString(36)
-            .substring(2, 8)
+        Math.random().toString(36).substring(2, 8)
     );
 }
 
-
 function nowISO() {
-
     return new Date().toISOString();
 }
 
-
 function formatMoney(value) {
-
     return (
-        Number(value) || 0
-    ).toLocaleString("fa-IR") +
-    " تومان";
+        (Number(value) || 0).toLocaleString("fa-IR") +
+        " تومان"
+    );
 }
 
-
 function escapeHTML(value) {
-
     return String(value ?? "")
         .replaceAll("&", "&amp;")
         .replaceAll("<", "&lt;")
@@ -98,59 +57,25 @@ function escapeHTML(value) {
         .replaceAll("'", "&#039;");
 }
 
-
 function showToast(message) {
-
-    const toast =
-        document.getElementById("toast");
+    const toast = document.getElementById("toast");
 
     if (!toast) return;
 
-    toast.textContent =
-        message;
-
+    toast.textContent = message;
     toast.classList.add("show");
 
-    clearTimeout(
-        showToast.timer
-    );
-
-    showToast.timer =
-        setTimeout(() => {
-
-            toast.classList.remove(
-                "show"
-            );
-
-        }, 2500);
+    setTimeout(() => {
+        toast.classList.remove("show");
+    }, 2500);
 }
 
-
-function setConnectionStatus(
-    text,
-    state = ""
-) {
-
+function setConnectionStatus(text) {
     const element =
-        document.getElementById(
-            "connectionStatus"
-        );
+        document.getElementById("connectionStatus");
 
-    if (!element) return;
-
-    element.textContent =
-        text;
-
-    element.classList.remove(
-        "connected",
-        "error"
-    );
-
-    if (state) {
-
-        element.classList.add(
-            state
-        );
+    if (element) {
+        element.textContent = text;
     }
 }
 
@@ -160,21 +85,13 @@ function setConnectionStatus(
 // ============================================================
 
 function createEmptyDatabase() {
-
     return {
-
         version: 1,
-
         products: [],
-
         inventory: {},
-
         sales: [],
-
         sale_items: [],
-
         settings: {}
-
     };
 }
 
@@ -184,679 +101,145 @@ function createEmptyDatabase() {
 // ============================================================
 
 function openHandleDB() {
+    return new Promise((resolve, reject) => {
 
-    return new Promise(
-        (resolve, reject) => {
+        const request = indexedDB.open(
+            HANDLE_DB_NAME,
+            HANDLE_DB_VERSION
+        );
 
-            if (
-                !("indexedDB" in window)
-            ) {
+        request.onupgradeneeded = function (event) {
 
-                reject(
-                    new Error(
-                        "IndexedDB در این مرورگر فعال نیست."
-                    )
-                );
+            const db = event.target.result;
 
-                return;
+            if (!db.objectStoreNames.contains(HANDLE_STORE)) {
+                db.createObjectStore(HANDLE_STORE);
             }
+        };
 
+        request.onsuccess = function () {
+            resolve(request.result);
+        };
 
-            const request =
-                indexedDB.open(
-                    HANDLE_DB_NAME,
-                    HANDLE_DB_VERSION
-                );
-
-
-            request.onupgradeneeded =
-                event => {
-
-                    const db =
-                        event.target.result;
-
-
-                    if (
-                        !db.objectStoreNames
-                            .contains(
-                                HANDLE_STORE
-                            )
-                    ) {
-
-                        db.createObjectStore(
-                            HANDLE_STORE
-                        );
-                    }
-                };
-
-
-            request.onsuccess =
-                () => {
-
-                    resolve(
-                        request.result
-                    );
-                };
-
-
-            request.onerror =
-                () => {
-
-                    reject(
-                        request.error ||
-                        new Error(
-                            "باز کردن IndexedDB ناموفق بود."
-                        )
-                    );
-                };
-
-        }
-    );
+        request.onerror = function () {
+            reject(request.error);
+        };
+    });
 }
 
 
-// ============================================================
-// SAVE HANDLE
-// ============================================================
+async function saveFolderHandle(handle) {
 
-async function saveFolderHandle(
-    handle
-) {
+    const db = await openHandleDB();
 
-    const db =
-        await openHandleDB();
+    return new Promise((resolve, reject) => {
 
+        const tx = db.transaction(
+            HANDLE_STORE,
+            "readwrite"
+        );
 
-    return new Promise(
-        (resolve, reject) => {
+        tx.objectStore(HANDLE_STORE).put(
+            handle,
+            HANDLE_KEY
+        );
 
-            const tx =
-                db.transaction(
-                    HANDLE_STORE,
-                    "readwrite"
-                );
+        tx.oncomplete = () => {
+            db.close();
+            resolve();
+        };
 
-
-            tx.objectStore(
-                HANDLE_STORE
-            ).put(
-                handle,
-                HANDLE_KEY
-            );
-
-
-            tx.oncomplete =
-                () => {
-
-                    db.close();
-
-                    resolve();
-                };
-
-
-            tx.onerror =
-                () => {
-
-                    db.close();
-
-                    reject(
-                        tx.error
-                    );
-                };
-
-        }
-    );
+        tx.onerror = () => {
+            db.close();
+            reject(tx.error);
+        };
+    });
 }
 
-
-// ============================================================
-// GET HANDLE
-// ============================================================
 
 async function getFolderHandle() {
 
-    const db =
-        await openHandleDB();
+    const db = await openHandleDB();
 
+    return new Promise((resolve, reject) => {
 
-    return new Promise(
-        (resolve, reject) => {
+        const tx = db.transaction(
+            HANDLE_STORE,
+            "readonly"
+        );
 
-            const tx =
-                db.transaction(
-                    HANDLE_STORE,
-                    "readonly"
-                );
-
-
-            const request =
-                tx.objectStore(
-                    HANDLE_STORE
-                ).get(
-                    HANDLE_KEY
-                );
-
-
-            request.onsuccess =
-                () => {
-
-                    db.close();
-
-                    resolve(
-                        request.result ||
-                        null
-                    );
-                };
-
-
-            request.onerror =
-                () => {
-
-                    db.close();
-
-                    reject(
-                        request.error
-                    );
-                };
-
-        }
-    );
-}
-
-
-// ============================================================
-// DELETE HANDLE
-// ============================================================
-
-async function deleteFolderHandle() {
-
-    const db =
-        await openHandleDB();
-
-
-    return new Promise(
-        (resolve, reject) => {
-
-            const tx =
-                db.transaction(
-                    HANDLE_STORE,
-                    "readwrite"
-                );
-
-
-            tx.objectStore(
-                HANDLE_STORE
-            ).delete(
+        const request =
+            tx.objectStore(HANDLE_STORE).get(
                 HANDLE_KEY
             );
 
+        request.onsuccess = () => {
+            db.close();
 
-            tx.oncomplete =
-                () => {
+            resolve(
+                request.result || null
+            );
+        };
 
-                    db.close();
+        request.onerror = () => {
+            db.close();
 
-                    resolve();
-                };
-
-
-            tx.onerror =
-                () => {
-
-                    db.close();
-
-                    reject(
-                        tx.error
-                    );
-                };
-
-        }
-    );
+            reject(request.error);
+        };
+    });
 }
 
 
 // ============================================================
-// CHECK API
+// PERMISSION
 // ============================================================
 
-function isFolderAPIAvailable() {
+async function getFolderPermission(handle) {
 
-    return (
-        "showDirectoryPicker" in window
-    );
-}
-
-
-// ============================================================
-// SELECT FOLDER MANUALLY
-//
-// فقط زمانی اجرا می‌شود که کاربر روی
-// دکمه 📁 بزند.
-// ============================================================
-
-async function chooseFolder() {
-
-    if (
-        !isFolderAPIAvailable()
-    ) {
-
-        setConnectionStatus(
-            "مرورگر از اتصال پوشه پشتیبانی نمی‌کند",
-            "error"
-        );
-
-        showToast(
-            "Chrome یا مرورگر سازگار استفاده کنید."
-        );
-
-        return false;
+    if (!handle) {
+        return "denied";
     }
-
 
     try {
 
-        setConnectionStatus(
-            "انتخاب پوشه..."
-        );
-
-
-        const handle =
-            await window.showDirectoryPicker({
-                mode: "readwrite"
-            });
-
-
-        if (!handle) {
-
-            return false;
-        }
-
-
-        folderHandle =
-            handle;
-
-
-        // ابتدا تلاش می‌کنیم بدون درخواست مجدد
-        // فایل را باز کنیم.
-        //
-        // اگر permission لازم باشد، چون این تابع
-        // مستقیماً با کلیک کاربر اجرا شده، اجازه
-        // درخواست permission داریم.
-
-        let ready =
-            await tryUseFolder(
-                true
-            );
-
-
-        if (!ready) {
-
-            folderHandle = null;
-
-            setConnectionStatus(
-                "اتصال برقرار نشد",
-                "error"
-            );
-
-            showToast(
-                "اتصال به پوشه ناموفق بود."
-            );
-
-            return false;
-        }
-
-
-        await saveFolderHandle(
-            folderHandle
-        );
-
-
-        folderConnected =
-            true;
-
-
-        setConnectionStatus(
-            "متصل: " +
-            folderHandle.name,
-            "connected"
-        );
-
-
-        await refreshAll();
-
-
-        showToast(
-            "پوشه Bizadshop متصل شد."
-        );
-
-
-        return true;
+        return await handle.queryPermission({
+            mode: "readwrite"
+        });
 
     } catch (error) {
 
-        console.error(
-            "chooseFolder:",
-            error
-        );
+        console.error(error);
 
-
-        if (
-            error &&
-            error.name ===
-                "AbortError"
-        ) {
-
-            return false;
-        }
-
-
-        folderConnected =
-            false;
-
-
-        setConnectionStatus(
-            "اتصال برقرار نشد",
-            "error"
-        );
-
-
-        showToast(
-            error.message ||
-            "اتصال پوشه ناموفق بود."
-        );
-
-
-        return false;
+        return "denied";
     }
 }
 
 
-// ============================================================
-// AUTO CONNECT
-//
-// مهم:
-//
-// اینجا queryPermission اجرا نمی‌شود.
-//
-// چون queryPermission در بعضی محیط‌ها باعث
-// معطل ماندن یا رفتار نامناسب می‌شود.
-//
-// مستقیماً تلاش می‌کنیم از Handle قبلی
-// فایل را بخوانیم.
-//
-// اگر اجازه وجود داشته باشد:
-//   مستقیم متصل می‌شود.
-//
-// اگر اجازه وجود نداشته باشد:
-//   فقط پیام اتصال مجدد نمایش داده می‌شود.
-// ============================================================
+async function requestFolderPermission(handle) {
 
-async function tryAutoConnect() {
-
-    if (connectionChecking) {
-
-        return folderConnected;
-    }
-
-
-    connectionChecking =
-        true;
-
-
-    try {
-
-        setConnectionStatus(
-            "در حال اتصال..."
-        );
-
-
-        const savedHandle =
-            await getFolderHandle();
-
-
-        if (!savedHandle) {
-
-            folderHandle = null;
-
-            folderConnected =
-                false;
-
-            setConnectionStatus(
-                "پوشه هنوز متصل نشده است",
-                "error"
-            );
-
-            return false;
-        }
-
-
-        folderHandle =
-            savedHandle;
-
-
-        // بدون queryPermission
-        // مستقیماً فایل را امتحان می‌کنیم.
-
-        const success =
-            await tryUseFolder(
-                false
-            );
-
-
-        if (!success) {
-
-            folderConnected =
-                false;
-
-
-            setConnectionStatus(
-                "برای اتصال دوباره روی 📁 بزنید",
-                "error"
-            );
-
-
-            return false;
-        }
-
-
-        folderConnected =
-            true;
-
-
-        setConnectionStatus(
-            "متصل: " +
-            folderHandle.name,
-            "connected"
-        );
-
-
-        await refreshAll();
-
-
-        return true;
-
-    } catch (error) {
-
-        console.error(
-            "tryAutoConnect:",
-            error
-        );
-
-
-        folderConnected =
-            false;
-
-
-        setConnectionStatus(
-            "برای اتصال دوباره روی 📁 بزنید",
-            "error"
-        );
-
-
-        return false;
-
-    } finally {
-
-        connectionChecking =
-            false;
-    }
-}
-
-
-// ============================================================
-// TRY USE FOLDER
-//
-// askPermission = true
-// فقط برای اتصال دستی.
-//
-// askPermission = false
-// برای اتصال خودکار بعد از Refresh.
-// ============================================================
-
-async function tryUseFolder(
-    askPermission
-) {
-
-    if (!folderHandle) {
-
+    if (!handle) {
         return false;
     }
 
-
     try {
 
-        // ابتدا مستقیماً فایل را امتحان می‌کنیم.
-        //
-        // اگر permission از قبل معتبر باشد
-        // همین قسمت کافی است.
+        let permission =
+            await getFolderPermission(handle);
 
-        const fileHandle =
-            await folderHandle.getFileHandle(
-                DATA_FILE_NAME
-            );
-
-
-        const file =
-            await fileHandle.getFile();
-
-
-        const text =
-            await file.text();
-
-
-        if (!text.trim()) {
-
-            database =
-                createEmptyDatabase();
-
-            await saveDataToFolder();
-
+        if (permission === "granted") {
             return true;
         }
 
+        permission =
+            await handle.requestPermission({
+                mode: "readwrite"
+            });
 
-        const parsed =
-            JSON.parse(text);
+        return permission === "granted";
 
+    } catch (error) {
 
-        database =
-            normalizeDatabase(
-                parsed
-            );
-
-
-        return true;
-
-    } catch (firstError) {
-
-        console.warn(
-            "اولین تلاش برای خواندن پوشه:",
-            firstError
-        );
-
-
-        // اگر اتصال دستی است، کاربر قبلاً
-        // روی دکمه کلیک کرده؛ بنابراین می‌توانیم
-        // permission را درخواست کنیم.
-
-        if (
-            askPermission &&
-            folderHandle &&
-            typeof
-                folderHandle.requestPermission ===
-                "function"
-        ) {
-
-            try {
-
-                const permission =
-                    await folderHandle
-                        .requestPermission({
-                            mode: "readwrite"
-                        });
-
-
-                if (
-                    permission !==
-                    "granted"
-                ) {
-
-                    return false;
-                }
-
-
-                const fileHandle =
-                    await folderHandle
-                        .getFileHandle(
-                            DATA_FILE_NAME,
-                            {
-                                create: true
-                            }
-                        );
-
-
-                const file =
-                    await fileHandle.getFile();
-
-
-                const text =
-                    await file.text();
-
-
-                if (!text.trim()) {
-
-                    database =
-                        createEmptyDatabase();
-
-                    await saveDataToFolder();
-
-                    return true;
-                }
-
-
-                const parsed =
-                    JSON.parse(text);
-
-
-                database =
-                    normalizeDatabase(
-                        parsed
-                    );
-
-
-                return true;
-
-            } catch (secondError) {
-
-                console.error(
-                    "دسترسی پوشه:",
-                    secondError
-                );
-
-                return false;
-            }
-        }
-
+        console.error(error);
 
         return false;
     }
@@ -864,167 +247,105 @@ async function tryUseFolder(
 
 
 // ============================================================
-// NORMALIZE DATABASE
-//
-// از خراب شدن ساختار اطلاعات جلوگیری می‌کند.
+// FIND DATA FILE
 // ============================================================
 
-function normalizeDatabase(
-    parsed
-) {
+async function getDataFileHandle() {
 
-    if (
-        !parsed ||
-        typeof parsed !==
-            "object"
-    ) {
-
-        throw new Error(
-            "ساختار فایل اطلاعات نامعتبر است."
-        );
+    if (!folderHandle) {
+        throw new Error("پوشه متصل نیست.");
     }
 
+    try {
 
-    return {
+        return await folderHandle.getFileHandle(
+            DATA_FILE_NAME
+        );
 
-        version:
-            parsed.version || 1,
+    } catch (error) {
 
-        products:
-            Array.isArray(
-                parsed.products
-            )
-                ? parsed.products
-                : [],
+        if (error.name === "NotFoundError") {
+            return null;
+        }
 
-        inventory:
-            parsed.inventory &&
-            typeof parsed.inventory ===
-                "object" &&
-            !Array.isArray(
-                parsed.inventory
-            )
-                ? parsed.inventory
-                : {},
-
-        sales:
-            Array.isArray(
-                parsed.sales
-            )
-                ? parsed.sales
-                : [],
-
-        sale_items:
-            Array.isArray(
-                parsed.sale_items
-            )
-                ? parsed.sale_items
-                : [],
-
-        settings:
-            parsed.settings &&
-            typeof parsed.settings ===
-                "object" &&
-            !Array.isArray(
-                parsed.settings
-            )
-                ? parsed.settings
-                : {}
-
-    };
+        throw error;
+    }
 }
 
 
 // ============================================================
-// ENSURE DATA FILE
+// CREATE DATA FILE ONLY IF IT DOES NOT EXIST
 // ============================================================
 
 async function ensureDataFile() {
 
     if (!folderHandle) {
-
-        throw new Error(
-            "پوشه متصل نیست."
-        );
+        throw new Error("پوشه متصل نیست.");
     }
 
+    let fileHandle =
+        await getDataFileHandle();
 
-    try {
-
-        return await folderHandle
-            .getFileHandle(
-                DATA_FILE_NAME
-            );
-
-    } catch (error) {
-
-        if (
-            error.name !==
-            "NotFoundError"
-        ) {
-
-            throw error;
-        }
-
-
-        const fileHandle =
-            await folderHandle
-                .getFileHandle(
-                    DATA_FILE_NAME,
-                    {
-                        create: true
-                    }
-                );
-
-
-        const writable =
-            await fileHandle
-                .createWritable();
-
-
-        await writable.write(
-            JSON.stringify(
-                createEmptyDatabase(),
-                null,
-                2
-            )
-        );
-
-
-        await writable.close();
-
-
+    // فایل وجود دارد:
+    // به هیچ وجه روی آن چیزی نمی‌نویسیم.
+    if (fileHandle) {
         return fileHandle;
     }
+
+    // فقط اگر فایل واقعاً وجود نداشت،
+    // فایل جدید ساخته می‌شود.
+    fileHandle =
+        await folderHandle.getFileHandle(
+            DATA_FILE_NAME,
+            {
+                create: true
+            }
+        );
+
+    const writable =
+        await fileHandle.createWritable();
+
+    await writable.write(
+        JSON.stringify(
+            createEmptyDatabase(),
+            null,
+            2
+        )
+    );
+
+    await writable.close();
+
+    return fileHandle;
 }
 
 
 // ============================================================
-// LOAD DATA
+// LOAD DATA FROM FILE
 // ============================================================
 
 async function loadDataFromFolder() {
 
     if (!folderHandle) {
-
-        throw new Error(
-            "پوشه متصل نیست."
-        );
+        throw new Error("پوشه متصل نیست.");
     }
 
+    // اول فایل موجود را پیدا می‌کنیم.
+    let fileHandle =
+        await getDataFileHandle();
 
-    const fileHandle =
-        await ensureDataFile();
-
+    // اگر وجود ندارد، تازه می‌سازیم.
+    if (!fileHandle) {
+        fileHandle =
+            await ensureDataFile();
+    }
 
     const file =
         await fileHandle.getFile();
 
-
     const text =
         await file.text();
 
-
+    // فایل خالی است.
     if (!text.trim()) {
 
         database =
@@ -1035,15 +356,53 @@ async function loadDataFromFolder() {
         return;
     }
 
+    let parsed;
 
-    const parsed =
-        JSON.parse(text);
+    try {
 
+        parsed =
+            JSON.parse(text);
 
-    database =
-        normalizeDatabase(
-            parsed
+    } catch (error) {
+
+        throw new Error(
+            "فایل bizadshop-data.json خراب یا نامعتبر است."
         );
+    }
+
+    // اطلاعات واقعی فایل را وارد برنامه می‌کنیم.
+    database = {
+
+        version:
+            parsed.version || 1,
+
+        products:
+            Array.isArray(parsed.products)
+                ? parsed.products
+                : [],
+
+        inventory:
+            parsed.inventory &&
+            typeof parsed.inventory === "object"
+                ? parsed.inventory
+                : {},
+
+        sales:
+            Array.isArray(parsed.sales)
+                ? parsed.sales
+                : [],
+
+        sale_items:
+            Array.isArray(parsed.sale_items)
+                ? parsed.sale_items
+                : [],
+
+        settings:
+            parsed.settings &&
+            typeof parsed.settings === "object"
+                ? parsed.settings
+                : {}
+    };
 }
 
 
@@ -1054,12 +413,21 @@ async function loadDataFromFolder() {
 async function saveDataToFolder() {
 
     if (!folderHandle) {
-
         throw new Error(
             "پوشه Bizadshop متصل نیست."
         );
     }
 
+    const permission =
+        await getFolderPermission(
+            folderHandle
+        );
+
+    if (permission !== "granted") {
+        throw new Error(
+            "دسترسی نوشتن به پوشه وجود ندارد."
+        );
+    }
 
     const fileHandle =
         await folderHandle.getFileHandle(
@@ -1069,10 +437,8 @@ async function saveDataToFolder() {
             }
         );
 
-
     const writable =
         await fileHandle.createWritable();
-
 
     await writable.write(
         JSON.stringify(
@@ -1082,29 +448,13 @@ async function saveDataToFolder() {
         )
     );
 
-
     await writable.close();
 }
 
 
-// ============================================================
-// SAVE DATABASE
-// ============================================================
-
 async function saveDatabase() {
 
     try {
-
-        if (
-            !folderHandle ||
-            !folderConnected
-        ) {
-
-            throw new Error(
-                "پوشه Bizadshop متصل نیست. اطلاعات تغییر نکرده‌اند."
-            );
-        }
-
 
         await saveDataToFolder();
 
@@ -1112,17 +462,140 @@ async function saveDatabase() {
 
     } catch (error) {
 
-        console.error(
-            "saveDatabase:",
-            error
-        );
-
+        console.error(error);
 
         showToast(
             error.message ||
             "ذخیره اطلاعات ناموفق بود."
         );
 
+        return false;
+    }
+}
+
+
+// ============================================================
+// CONNECT EXISTING FOLDER
+// ============================================================
+
+async function connectExistingFolder() {
+
+    const handle =
+        await getFolderHandle();
+
+    if (!handle) {
+        return false;
+    }
+
+    folderHandle = handle;
+
+    const permission =
+        await getFolderPermission(
+            folderHandle
+        );
+
+    if (permission !== "granted") {
+
+        folderHandle = null;
+
+        setConnectionStatus(
+            "نیاز به تأیید دسترسی پوشه"
+        );
+
+        return false;
+    }
+
+    // ========================================================
+    // خیلی مهم:
+    // اول اطلاعات فایل قبلی خوانده می‌شود.
+    // دیتابیس خالی ساخته نمی‌شود.
+    // ========================================================
+
+    await loadDataFromFolder();
+
+    setConnectionStatus(
+        "متصل به پوشه: " +
+        handle.name
+    );
+
+    await refreshAll();
+
+    return true;
+}
+
+
+// ============================================================
+// CHOOSE NEW FOLDER
+// ============================================================
+
+async function chooseFolder() {
+
+    if (!("showDirectoryPicker" in window)) {
+
+        showToast(
+            "این مرورگر از اتصال مستقیم به پوشه پشتیبانی نمی‌کند."
+        );
+
+        return false;
+    }
+
+    try {
+
+        const handle =
+            await window.showDirectoryPicker({
+                mode: "readwrite"
+            });
+
+        const permission =
+            await requestFolderPermission(
+                handle
+            );
+
+        if (!permission) {
+
+            showToast(
+                "اجازه دسترسی به پوشه داده نشد."
+            );
+
+            return false;
+        }
+
+        folderHandle =
+            handle;
+
+        // Handle را ذخیره می‌کنیم
+        // تا دفعه بعد دوباره انتخاب نشود.
+        await saveFolderHandle(
+            folderHandle
+        );
+
+        // اطلاعات قبلی را می‌خوانیم.
+        await loadDataFromFolder();
+
+        setConnectionStatus(
+            "متصل به پوشه: " +
+            folderHandle.name
+        );
+
+        await refreshAll();
+
+        showToast(
+            "پوشه متصل شد و اطلاعات قبلی بازیابی شد."
+        );
+
+        return true;
+
+    } catch (error) {
+
+        console.error(error);
+
+        if (error.name !== "AbortError") {
+
+            showToast(
+                error.message ||
+                "اتصال پوشه ناموفق بود."
+            );
+        }
 
         return false;
     }
@@ -1134,7 +607,6 @@ async function saveDatabase() {
 // ============================================================
 
 async function getProducts() {
-
     return database.products;
 }
 
@@ -1148,18 +620,12 @@ async function getProduct(id) {
 }
 
 
-async function getProductByBarcode(
-    barcode
-) {
+async function getProductByBarcode(barcode) {
 
     return database.products.find(
         product =>
-            String(
-                product.barcode
-            ).trim() ===
-            String(
-                barcode
-            ).trim()
+            String(product.barcode).trim() ===
+            String(barcode).trim()
     );
 }
 
@@ -1168,14 +634,10 @@ async function getProductByBarcode(
 // INVENTORY
 // ============================================================
 
-async function getQuantity(
-    productId
-) {
+async function getQuantity(productId) {
 
     return Number(
-        database.inventory[
-            productId
-        ]?.quantity
+        database.inventory[productId]?.quantity
     ) || 0;
 }
 
@@ -1185,9 +647,7 @@ async function setQuantity(
     quantity
 ) {
 
-    database.inventory[
-        productId
-    ] = {
+    database.inventory[productId] = {
 
         productId:
             productId,
@@ -1197,7 +657,6 @@ async function setQuantity(
 
         updatedAt:
             nowISO()
-
     };
 }
 
@@ -1206,20 +665,16 @@ async function setQuantity(
 // SAVE PRODUCT
 // ============================================================
 
-async function saveProduct(
-    product
-) {
+async function saveProduct(product) {
 
     const existing =
         await getProductByBarcode(
             product.barcode
         );
 
-
     if (
         existing &&
-        existing.id !==
-            product.id
+        existing.id !== product.id
     ) {
 
         throw new Error(
@@ -1227,14 +682,11 @@ async function saveProduct(
         );
     }
 
-
     const index =
         database.products.findIndex(
             item =>
-                item.id ===
-                product.id
+                item.id === product.id
         );
-
 
     if (index >= 0) {
 
@@ -1248,11 +700,8 @@ async function saveProduct(
         );
     }
 
-
     if (
-        !database.inventory[
-            product.id
-        ]
+        !database.inventory[product.id]
     ) {
 
         await setQuantity(
@@ -1261,8 +710,9 @@ async function saveProduct(
         );
     }
 
+    await saveDatabase();
 
-    return await saveDatabase();
+    return product;
 }
 
 
@@ -1274,22 +724,11 @@ document
     .getElementById("productForm")
     .addEventListener(
         "submit",
-        async event => {
+        async function (event) {
 
             event.preventDefault();
 
-
             try {
-
-                if (
-                    !folderConnected
-                ) {
-
-                    throw new Error(
-                        "ابتدا پوشه Bizadshop را متصل کنید."
-                    );
-                }
-
 
                 const id =
                     document
@@ -1297,7 +736,6 @@ document
                             "productId"
                         )
                         .value;
-
 
                 const barcode =
                     document
@@ -1307,7 +745,6 @@ document
                         .value
                         .trim();
 
-
                 const name =
                     document
                         .getElementById(
@@ -1316,7 +753,6 @@ document
                         .value
                         .trim();
 
-
                 const category =
                     document
                         .getElementById(
@@ -1324,7 +760,6 @@ document
                         )
                         .value
                         .trim();
-
 
                 const purchasePrice =
                     Number(
@@ -1335,7 +770,6 @@ document
                             .value
                     ) || 0;
 
-
                 const salePrice =
                     Number(
                         document
@@ -1345,14 +779,12 @@ document
                             .value
                     ) || 0;
 
-
                 const unit =
                     document
                         .getElementById(
                             "productUnit"
                         )
                         .value;
-
 
                 const initialQuantity =
                     Number(
@@ -1363,41 +795,30 @@ document
                             .value
                     ) || 0;
 
-
                 if (!barcode) {
-
                     throw new Error(
                         "بارکد را وارد کنید."
                     );
                 }
 
-
                 if (!name) {
-
                     throw new Error(
                         "نام کالا را وارد کنید."
                     );
                 }
 
-
                 let product;
-
 
                 if (id) {
 
                     product =
-                        await getProduct(
-                            id
-                        );
-
+                        await getProduct(id);
 
                     if (!product) {
-
                         throw new Error(
                             "کالا پیدا نشد."
                         );
                     }
-
 
                     product.barcode =
                         barcode;
@@ -1458,26 +879,15 @@ document
                     };
                 }
 
-
-                const saved =
-                    await saveProduct(
-                        product
-                    );
-
-
-                if (!saved) {
-
-                    return;
-                }
-
+                await saveProduct(
+                    product
+                );
 
                 closeModal(
                     "productModal"
                 );
 
-
                 event.target.reset();
-
 
                 document
                     .getElementById(
@@ -1485,16 +895,13 @@ document
                     )
                     .value = "";
 
-
                 document
                     .getElementById(
                         "initialQuantity"
                     )
                     .value = "0";
 
-
                 await refreshAll();
-
 
                 showToast(
                     id
@@ -1509,7 +916,6 @@ document
                     "ذخیره کالا ناموفق بود."
                 );
             }
-
         }
     );
 
@@ -1518,15 +924,10 @@ document
 // EDIT PRODUCT
 // ============================================================
 
-async function editProduct(
-    productId
-) {
+async function editProduct(productId) {
 
     const product =
-        await getProduct(
-            productId
-        );
-
+        await getProduct(productId);
 
     if (!product) {
 
@@ -1537,14 +938,12 @@ async function editProduct(
         return;
     }
 
-
     document
         .getElementById(
             "productModalTitle"
         )
         .textContent =
             "ویرایش کالا";
-
 
     document
         .getElementById(
@@ -1553,14 +952,12 @@ async function editProduct(
         .value =
             product.id;
 
-
     document
         .getElementById(
             "productBarcode"
         )
         .value =
             product.barcode;
-
 
     document
         .getElementById(
@@ -1569,14 +966,12 @@ async function editProduct(
         .value =
             product.name;
 
-
     document
         .getElementById(
             "productCategory"
         )
         .value =
             product.category || "";
-
 
     document
         .getElementById(
@@ -1585,14 +980,12 @@ async function editProduct(
         .value =
             product.purchasePrice || 0;
 
-
     document
         .getElementById(
             "salePrice"
         )
         .value =
             product.salePrice || 0;
-
 
     document
         .getElementById(
@@ -1601,14 +994,12 @@ async function editProduct(
         .value =
             product.unit || "عدد";
 
-
     document
         .getElementById(
             "initialQuantity"
         )
         .value =
             0;
-
 
     openModal(
         "productModal"
@@ -1620,41 +1011,30 @@ async function editProduct(
 // DELETE PRODUCT
 // ============================================================
 
-async function deleteProduct(
-    productId
-) {
+async function deleteProduct(productId) {
 
     const product =
-        await getProduct(
-            productId
-        );
-
+        await getProduct(productId);
 
     if (!product) return;
-
 
     if (
         !confirm(
             `کالای «${product.name}» حذف شود؟`
         )
     ) {
-
         return;
     }
-
 
     database.products =
         database.products.filter(
             item =>
-                item.id !==
-                productId
+                item.id !== productId
         );
-
 
     delete database.inventory[
         productId
     ];
-
 
     cart =
         cart.filter(
@@ -1663,16 +1043,9 @@ async function deleteProduct(
                 productId
         );
 
-
-    const saved =
-        await saveDatabase();
-
-
-    if (!saved) return;
-
+    await saveDatabase();
 
     await refreshAll();
-
 
     showToast(
         "کالا حذف شد."
@@ -1684,67 +1057,47 @@ async function deleteProduct(
 // PRODUCTS LIST
 // ============================================================
 
-async function renderProducts(
-    search = ""
-) {
+async function renderProducts(search = "") {
 
     const container =
         document.getElementById(
             "productsList"
         );
 
-
     let products =
         await getProducts();
 
-
     const text =
-        search
-            .trim()
-            .toLowerCase();
-
+        search.trim().toLowerCase();
 
     if (text) {
 
         products =
             products.filter(
                 product =>
-                    String(
-                        product.name || ""
-                    )
-                    .toLowerCase()
-                    .includes(text)
+                    product.name
+                        .toLowerCase()
+                        .includes(text)
                     ||
-                    String(
-                        product.barcode || ""
-                    )
-                    .toLowerCase()
-                    .includes(text)
+                    String(product.barcode)
+                        .toLowerCase()
+                        .includes(text)
                     ||
                     String(
                         product.category || ""
                     )
-                    .toLowerCase()
-                    .includes(text)
+                        .toLowerCase()
+                        .includes(text)
             );
     }
 
-
-    products =
-        [...products];
-
-
     products.sort(
         (a, b) =>
-            String(
-                b.createdAt || ""
-            ).localeCompare(
-                String(
-                    a.createdAt || ""
+            String(b.createdAt)
+                .localeCompare(
+                    String(a.createdAt)
                 )
-            )
     );
-
 
     if (!products.length) {
 
@@ -1756,37 +1109,22 @@ async function renderProducts(
         return;
     }
 
-
     let html = "";
 
-
-    for (
-        const product of products
-    ) {
+    for (const product of products) {
 
         const quantity =
             await getQuantity(
                 product.id
             );
 
-
-        let stockClass =
-            "good";
-
+        let stockClass = "good";
 
         if (quantity <= 0) {
-
-            stockClass =
-                "empty";
-
-        } else if (
-            quantity <= 5
-        ) {
-
-            stockClass =
-                "low";
+            stockClass = "empty";
+        } else if (quantity <= 5) {
+            stockClass = "low";
         }
-
 
         html += `
 
@@ -1797,19 +1135,14 @@ async function renderProducts(
                 <div class="product-info">
 
                     <div class="product-name">
-                        ${escapeHTML(
-                            product.name
-                        )}
+                        ${escapeHTML(product.name)}
                     </div>
 
                     <div class="product-barcode">
-                        ${escapeHTML(
-                            product.barcode
-                        )}
+                        ${escapeHTML(product.barcode)}
                     </div>
 
                 </div>
-
 
                 <div class="product-price">
 
@@ -1818,29 +1151,20 @@ async function renderProducts(
                     </small>
 
                     <strong>
-                        ${formatMoney(
-                            product.salePrice
-                        )}
+                        ${formatMoney(product.salePrice)}
                     </strong>
 
                 </div>
 
             </div>
 
-
             <div class="product-bottom">
 
                 <div class="stock ${stockClass}">
                     موجودی:
-                    ${quantity.toLocaleString(
-                        "fa-IR"
-                    )}
-                    ${escapeHTML(
-                        product.unit ||
-                        "عدد"
-                    )}
+                    ${quantity.toLocaleString("fa-IR")}
+                    ${escapeHTML(product.unit || "عدد")}
                 </div>
-
 
                 <div class="product-actions">
 
@@ -1852,7 +1176,6 @@ async function renderProducts(
                         موجودی
                     </button>
 
-
                     <button
                         class="small-button"
                         onclick="editProduct('${product.id}')"
@@ -1860,7 +1183,6 @@ async function renderProducts(
                     >
                         ویرایش
                     </button>
-
 
                     <button
                         class="small-button danger"
@@ -1875,59 +1197,44 @@ async function renderProducts(
             </div>
 
         </div>
-
         `;
     }
 
-
-    container.innerHTML =
-        html;
+    container.innerHTML = html;
 }
 
 
 // ============================================================
-// INVENTORY LIST
+// INVENTORY
 // ============================================================
 
-async function renderInventory(
-    search = ""
-) {
+async function renderInventory(search = "") {
 
     const container =
         document.getElementById(
             "inventoryList"
         );
 
-
     let products =
         await getProducts();
 
-
     const text =
-        search
-            .trim()
-            .toLowerCase();
-
+        search.trim().toLowerCase();
 
     if (text) {
 
         products =
             products.filter(
                 product =>
-                    String(
-                        product.name || ""
-                    )
-                    .toLowerCase()
-                    .includes(text)
+                    product.name
+                        .toLowerCase()
+                        .includes(text)
                     ||
-                    String(
-                        product.barcode || ""
-                    )
-                    .toLowerCase()
-                    .includes(text)
+                    String(product.barcode)
+                        .toLowerCase()
+                        .includes(text)
             );
     }
-
 
     if (!products.length) {
 
@@ -1939,37 +1246,22 @@ async function renderInventory(
         return;
     }
 
-
     let html = "";
 
-
-    for (
-        const product of products
-    ) {
+    for (const product of products) {
 
         const quantity =
             await getQuantity(
                 product.id
             );
 
-
-        let stockClass =
-            "good";
-
+        let stockClass = "good";
 
         if (quantity <= 0) {
-
-            stockClass =
-                "empty";
-
-        } else if (
-            quantity <= 5
-        ) {
-
-            stockClass =
-                "low";
+            stockClass = "empty";
+        } else if (quantity <= 5) {
+            stockClass = "low";
         }
-
 
         html += `
 
@@ -1980,42 +1272,28 @@ async function renderInventory(
                 <div class="product-info">
 
                     <div class="product-name">
-                        ${escapeHTML(
-                            product.name
-                        )}
+                        ${escapeHTML(product.name)}
                     </div>
 
                     <div class="product-barcode">
-                        ${escapeHTML(
-                            product.barcode
-                        )}
+                        ${escapeHTML(product.barcode)}
                     </div>
 
                 </div>
 
-
                 <div class="stock ${stockClass}">
-                    ${quantity.toLocaleString(
-                        "fa-IR"
-                    )}
-                    ${escapeHTML(
-                        product.unit ||
-                        "عدد"
-                    )}
+                    ${quantity.toLocaleString("fa-IR")}
+                    ${escapeHTML(product.unit || "عدد")}
                 </div>
 
             </div>
-
 
             <div class="product-bottom">
 
                 <span>
                     قیمت فروش:
-                    ${formatMoney(
-                        product.salePrice
-                    )}
+                    ${formatMoney(product.salePrice)}
                 </span>
-
 
                 <button
                     class="small-button"
@@ -2028,13 +1306,10 @@ async function renderInventory(
             </div>
 
         </div>
-
         `;
     }
 
-
-    container.innerHTML =
-        html;
+    container.innerHTML = html;
 }
 
 
@@ -2042,24 +1317,15 @@ async function renderInventory(
 // STOCK MODAL
 // ============================================================
 
-async function openStockModal(
-    productId
-) {
+async function openStockModal(productId) {
 
     const product =
-        await getProduct(
-            productId
-        );
-
+        await getProduct(productId);
 
     if (!product) return;
 
-
     const quantity =
-        await getQuantity(
-            productId
-        );
-
+        await getQuantity(productId);
 
     document
         .getElementById(
@@ -2068,7 +1334,6 @@ async function openStockModal(
         .value =
             productId;
 
-
     document
         .getElementById(
             "stockProductName"
@@ -2076,14 +1341,11 @@ async function openStockModal(
         .textContent =
             `${product.name} — موجودی فعلی: ${quantity}`;
 
-
     document
         .getElementById(
             "stockAmount"
         )
-        .value =
-            "";
-
+        .value = "";
 
     document
         .getElementById(
@@ -2091,7 +1353,6 @@ async function openStockModal(
         )
         .value =
             "increase";
-
 
     openModal(
         "stockModal"
@@ -2107,22 +1368,11 @@ document
     .getElementById("stockForm")
     .addEventListener(
         "submit",
-        async event => {
+        async function (event) {
 
             event.preventDefault();
 
-
             try {
-
-                if (
-                    !folderConnected
-                ) {
-
-                    throw new Error(
-                        "ابتدا پوشه Bizadshop را متصل کنید."
-                    );
-                }
-
 
                 const productId =
                     document
@@ -2131,14 +1381,12 @@ document
                         )
                         .value;
 
-
                 const action =
                     document
                         .getElementById(
                             "stockAction"
                         )
                         .value;
-
 
                 const amount =
                     Number(
@@ -2149,57 +1397,41 @@ document
                             .value
                     );
 
-
                 if (
-                    !Number.isFinite(
-                        amount
-                    ) ||
+                    !Number.isFinite(amount) ||
                     amount < 0
                 ) {
-
                     throw new Error(
                         "مقدار نامعتبر است."
                     );
                 }
-
 
                 const current =
                     await getQuantity(
                         productId
                     );
 
-
                 let newQuantity;
 
-
                 if (
-                    action ===
-                    "increase"
+                    action === "increase"
                 ) {
 
                     newQuantity =
-                        current +
-                        amount;
+                        current + amount;
 
                 } else if (
-                    action ===
-                    "decrease"
+                    action === "decrease"
                 ) {
 
-                    if (
-                        amount >
-                        current
-                    ) {
-
+                    if (amount > current) {
                         throw new Error(
                             "موجودی کافی نیست."
                         );
                     }
 
-
                     newQuantity =
-                        current -
-                        amount;
+                        current - amount;
 
                 } else {
 
@@ -2207,30 +1439,18 @@ document
                         amount;
                 }
 
-
                 await setQuantity(
                     productId,
                     newQuantity
                 );
 
-
-                const saved =
-                    await saveDatabase();
-
-
-                if (!saved) {
-
-                    return;
-                }
-
+                await saveDatabase();
 
                 closeModal(
                     "stockModal"
                 );
 
-
                 await refreshAll();
-
 
                 showToast(
                     "موجودی ذخیره شد."
@@ -2239,37 +1459,26 @@ document
             } catch (error) {
 
                 showToast(
-                    error.message ||
-                    "ذخیره موجودی ناموفق بود."
+                    error.message
                 );
             }
-
         }
     );
 
 
 // ============================================================
-// SALES / CART
+// CART
 // ============================================================
 
-async function addToCart(
-    productId
-) {
+async function addToCart(productId) {
 
     const product =
-        await getProduct(
-            productId
-        );
-
+        await getProduct(productId);
 
     if (!product) return;
 
-
     const quantity =
-        await getQuantity(
-            productId
-        );
-
+        await getQuantity(productId);
 
     if (quantity <= 0) {
 
@@ -2280,14 +1489,12 @@ async function addToCart(
         return;
     }
 
-
     const existing =
         cart.find(
             item =>
                 item.productId ===
                 productId
         );
-
 
     if (existing) {
 
@@ -2303,30 +1510,24 @@ async function addToCart(
             return;
         }
 
-
         existing.quantity++;
 
     } else {
 
         cart.push({
-
             productId:
                 productId,
 
             quantity:
                 1
-
         });
     }
 
-
-    await renderCart();
+    renderCart();
 }
 
 
-function removeFromCart(
-    productId
-) {
+function removeFromCart(productId) {
 
     cart =
         cart.filter(
@@ -2334,7 +1535,6 @@ function removeFromCart(
                 item.productId !==
                 productId
         );
-
 
     renderCart();
 }
@@ -2352,20 +1552,15 @@ async function changeCartQuantity(
                 productId
         );
 
-
     if (!item) return;
-
 
     const stock =
         await getQuantity(
             productId
         );
 
-
     const newQuantity =
-        item.quantity +
-        change;
-
+        item.quantity + change;
 
     if (newQuantity <= 0) {
 
@@ -2376,11 +1571,7 @@ async function changeCartQuantity(
         return;
     }
 
-
-    if (
-        newQuantity >
-        stock
-    ) {
+    if (newQuantity > stock) {
 
         showToast(
             "موجودی کافی نیست."
@@ -2389,18 +1580,12 @@ async function changeCartQuantity(
         return;
     }
 
-
     item.quantity =
         newQuantity;
 
-
-    await renderCart();
+    renderCart();
 }
 
-
-// ============================================================
-// CART
-// ============================================================
 
 async function renderCart() {
 
@@ -2409,14 +1594,12 @@ async function renderCart() {
             "cartList"
         );
 
-
     if (!cart.length) {
 
         container.innerHTML =
             `<div class="empty">
                 سبد فروش خالی است.
             </div>`;
-
 
         document
             .getElementById(
@@ -2425,39 +1608,26 @@ async function renderCart() {
             .textContent =
                 "0 تومان";
 
-
         return;
     }
 
-
     let html = "";
-
     let total = 0;
 
-
-    for (
-        const item of cart
-    ) {
+    for (const item of cart) {
 
         const product =
             await getProduct(
                 item.productId
             );
 
-
         if (!product) continue;
 
-
         const itemTotal =
-            Number(
-                product.salePrice
-            ) *
+            Number(product.salePrice) *
             item.quantity;
 
-
-        total +=
-            itemTotal;
-
+        total += itemTotal;
 
         html += `
 
@@ -2466,23 +1636,16 @@ async function renderCart() {
             <div class="cart-info">
 
                 <strong>
-                    ${escapeHTML(
-                        product.name
-                    )}
+                    ${escapeHTML(product.name)}
                 </strong>
 
                 <small>
-                    ${formatMoney(
-                        product.salePrice
-                    )}
+                    ${formatMoney(product.salePrice)}
                     ×
-                    ${item.quantity.toLocaleString(
-                        "fa-IR"
-                    )}
+                    ${item.quantity.toLocaleString("fa-IR")}
                 </small>
 
             </div>
-
 
             <div class="cart-controls">
 
@@ -2494,13 +1657,9 @@ async function renderCart() {
                     +
                 </button>
 
-
                 <strong>
-                    ${item.quantity.toLocaleString(
-                        "fa-IR"
-                    )}
+                    ${item.quantity.toLocaleString("fa-IR")}
                 </strong>
-
 
                 <button
                     class="quantity-button"
@@ -2513,23 +1672,18 @@ async function renderCart() {
             </div>
 
         </div>
-
         `;
     }
 
-
     container.innerHTML =
         html;
-
 
     document
         .getElementById(
             "cartTotal"
         )
         .textContent =
-            formatMoney(
-                total
-            );
+            formatMoney(total);
 }
 
 
@@ -2548,39 +1702,22 @@ async function checkout() {
         return;
     }
 
-
-    if (!folderConnected) {
-
-        showToast(
-            "پوشه Bizadshop متصل نیست."
-        );
-
-        return;
-    }
-
-
     const saleId =
         generateId("sale");
 
-
     const createdAt =
         nowISO();
-
 
     let total = 0;
 
     const saleItems = [];
 
-
-    for (
-        const item of cart
-    ) {
+    for (const item of cart) {
 
         const product =
             await getProduct(
                 item.productId
             );
-
 
         if (!product) {
 
@@ -2589,12 +1726,10 @@ async function checkout() {
             );
         }
 
-
         const stock =
             await getQuantity(
                 item.productId
             );
-
 
         if (
             item.quantity >
@@ -2606,17 +1741,11 @@ async function checkout() {
             );
         }
 
-
         const itemTotal =
-            Number(
-                product.salePrice
-            ) *
+            Number(product.salePrice) *
             item.quantity;
 
-
-        total +=
-            itemTotal;
-
+        total += itemTotal;
 
         saleItems.push({
 
@@ -2635,16 +1764,12 @@ async function checkout() {
                 item.quantity,
 
             unitPrice:
-                Number(
-                    product.salePrice
-                ),
+                Number(product.salePrice),
 
             totalPrice:
                 itemTotal
-
         });
     }
-
 
     database.sales.push({
 
@@ -2662,45 +1787,33 @@ async function checkout() {
 
         createdAt:
             createdAt
-
     });
 
-
-    for (
-        const item of saleItems
-    ) {
+    for (const item of saleItems) {
 
         database.sale_items.push(
             item
         );
-
 
         const current =
             await getQuantity(
                 item.productId
             );
 
-
         await setQuantity(
             item.productId,
-            current -
-            item.quantity
+            current - item.quantity
         );
     }
-
 
     const saved =
         await saveDatabase();
 
-
     if (!saved) return;
-
 
     cart = [];
 
-
     await refreshAll();
-
 
     showToast(
         "فروش با موفقیت در پوشه ذخیره شد."
@@ -2712,16 +1825,13 @@ async function checkout() {
 // TODAY SALES
 // ============================================================
 
-function isToday(
-    isoDate
-) {
+function isToday(isoDate) {
 
     const date =
         new Date(isoDate);
 
     const now =
         new Date();
-
 
     return (
         date.getFullYear() ===
@@ -2756,13 +1866,9 @@ async function renderDashboard() {
     const products =
         await getProducts();
 
-
     let totalStock = 0;
 
-
-    for (
-        const product of products
-    ) {
+    for (const product of products) {
 
         totalStock +=
             await getQuantity(
@@ -2770,10 +1876,8 @@ async function renderDashboard() {
             );
     }
 
-
     const sales =
         await getTodaySales();
-
 
     const salesAmount =
         sales.reduce(
@@ -2790,7 +1894,6 @@ async function renderDashboard() {
             0
         );
 
-
     document
         .getElementById(
             "totalProducts"
@@ -2799,7 +1902,6 @@ async function renderDashboard() {
             products.length.toLocaleString(
                 "fa-IR"
             );
-
 
     document
         .getElementById(
@@ -2810,7 +1912,6 @@ async function renderDashboard() {
                 "fa-IR"
             );
 
-
     document
         .getElementById(
             "todaySales"
@@ -2820,7 +1921,6 @@ async function renderDashboard() {
                 "fa-IR"
             );
 
-
     document
         .getElementById(
             "todaySalesAmount"
@@ -2829,7 +1929,6 @@ async function renderDashboard() {
             formatMoney(
                 salesAmount
             );
-
 
     await renderLowStock();
 }
@@ -2846,40 +1945,29 @@ async function renderLowStock() {
             "lowStockList"
         );
 
-
     const products =
         await getProducts();
 
-
     const lowStock = [];
 
-
-    for (
-        const product of products
-    ) {
+    for (const product of products) {
 
         const quantity =
             await getQuantity(
                 product.id
             );
 
-
-        if (
-            quantity <= 5
-        ) {
+        if (quantity <= 5) {
 
             lowStock.push({
-
                 product:
                     product,
 
                 quantity:
                     quantity
-
             });
         }
     }
-
 
     if (!lowStock.length) {
 
@@ -2891,13 +1979,10 @@ async function renderLowStock() {
         return;
     }
 
-
     let html = "";
 
-
     for (
-        const item of
-            lowStock.slice(0, 5)
+        const item of lowStock.slice(0, 5)
     ) {
 
         html += `
@@ -2922,7 +2007,6 @@ async function renderLowStock() {
 
                 </div>
 
-
                 <div class="stock ${
                     item.quantity <= 0
                         ? "empty"
@@ -2939,10 +2023,8 @@ async function renderLowStock() {
             </div>
 
         </div>
-
         `;
     }
-
 
     container.innerHTML =
         html;
@@ -2958,20 +2040,15 @@ async function renderInventorySummary() {
     const products =
         await getProducts();
 
-
     let total = 0;
 
-
-    for (
-        const product of products
-    ) {
+    for (const product of products) {
 
         total +=
             await getQuantity(
                 product.id
             );
     }
-
 
     document
         .getElementById(
@@ -2981,7 +2058,6 @@ async function renderInventorySummary() {
             products.length.toLocaleString(
                 "fa-IR"
             );
-
 
     document
         .getElementById(
@@ -2998,21 +2074,17 @@ async function renderInventorySummary() {
 // SALE SEARCH
 // ============================================================
 
-async function renderSaleSearch(
-    text
-) {
+async function renderSaleSearch(text) {
 
     const container =
         document.getElementById(
             "saleSearchResults"
         );
 
-
     text =
         String(text || "")
             .trim()
             .toLowerCase();
-
 
     if (!text) {
 
@@ -3021,29 +2093,24 @@ async function renderSaleSearch(
         return;
     }
 
-
     const products =
         await getProducts();
-
 
     const results =
         products
             .filter(
                 product =>
-                    String(
-                        product.name || ""
-                    )
-                    .toLowerCase()
-                    .includes(text)
+                    product.name
+                        .toLowerCase()
+                        .includes(text)
                     ||
                     String(
-                        product.barcode || ""
+                        product.barcode
                     )
-                    .toLowerCase()
-                    .includes(text)
+                        .toLowerCase()
+                        .includes(text)
             )
             .slice(0, 10);
-
 
     if (!results.length) {
 
@@ -3055,19 +2122,14 @@ async function renderSaleSearch(
         return;
     }
 
-
     let html = "";
 
-
-    for (
-        const product of results
-    ) {
+    for (const product of results) {
 
         const quantity =
             await getQuantity(
                 product.id
             );
-
 
         html += `
 
@@ -3097,7 +2159,6 @@ async function renderSaleSearch(
 
             </div>
 
-
             <button
                 class="small-button"
                 onclick="addToCart('${product.id}')"
@@ -3107,10 +2168,8 @@ async function renderSaleSearch(
             </button>
 
         </div>
-
         `;
     }
-
 
     container.innerHTML =
         html;
@@ -3121,9 +2180,7 @@ async function renderSaleSearch(
 // NAVIGATION
 // ============================================================
 
-function showPage(
-    pageName
-) {
+function showPage(pageName) {
 
     document
         .querySelectorAll(".page")
@@ -3134,13 +2191,10 @@ function showPage(
                 )
         );
 
-
     const page =
         document.getElementById(
-            pageName +
-            "Page"
+            pageName + "Page"
         );
-
 
     if (page) {
 
@@ -3148,7 +2202,6 @@ function showPage(
             "active"
         );
     }
-
 
     document
         .querySelectorAll(".nav-btn")
@@ -3160,7 +2213,6 @@ function showPage(
                     button.dataset.page ===
                         pageName
                 );
-
             }
         );
 }
@@ -3175,11 +2227,9 @@ function openModal(id) {
     const modal =
         document.getElementById(id);
 
-    if (!modal) return;
-
-    modal.classList.add(
-        "show"
-    );
+    if (modal) {
+        modal.classList.add("show");
+    }
 }
 
 
@@ -3188,18 +2238,14 @@ function closeModal(id) {
     const modal =
         document.getElementById(id);
 
-    if (!modal) return;
-
-    modal.classList.remove(
-        "show"
-    );
+    if (modal) {
+        modal.classList.remove("show");
+    }
 }
 
 
 document
-    .querySelectorAll(
-        "[data-close-modal]"
-    )
+    .querySelectorAll("[data-close-modal]")
     .forEach(
         button => {
 
@@ -3208,13 +2254,10 @@ document
                 () => {
 
                     closeModal(
-                        button.dataset
-                            .closeModal
+                        button.dataset.closeModal
                     );
-
                 }
             );
-
         }
     );
 
@@ -3233,15 +2276,12 @@ document
                         modal
                     ) {
 
-                        modal.classList
-                            .remove(
-                                "show"
-                            );
+                        modal.classList.remove(
+                            "show"
+                        );
                     }
-
                 }
             );
-
         }
     );
 
@@ -3259,13 +2299,11 @@ function openAddProductModal() {
         .textContent =
             "افزودن کالا";
 
-
     document
         .getElementById(
             "productForm"
         )
         .reset();
-
 
     document
         .getElementById(
@@ -3273,14 +2311,11 @@ function openAddProductModal() {
         )
         .value = "";
 
-
     document
         .getElementById(
             "initialQuantity"
         )
-        .value =
-            "0";
-
+        .value = "0";
 
     openModal(
         "productModal"
@@ -3289,7 +2324,7 @@ function openAddProductModal() {
 
 
 // ============================================================
-// NAVIGATION EVENTS
+// EVENT LISTENERS
 // ============================================================
 
 document
@@ -3302,56 +2337,33 @@ document
                 async () => {
 
                     const page =
-                        button.dataset
-                            .page;
+                        button.dataset.page;
 
-
-                    showPage(
-                        page
-                    );
-
+                    showPage(page);
 
                     if (
-                        page ===
-                        "products"
+                        page === "products"
                     ) {
-
                         await renderProducts();
-
                     }
 
-
                     if (
-                        page ===
-                        "inventory"
+                        page === "inventory"
                     ) {
-
                         await renderInventory();
-
                         await renderInventorySummary();
-
                     }
-
 
                     if (
-                        page ===
-                        "sale"
+                        page === "sale"
                     ) {
-
                         await renderCart();
-
                     }
-
                 }
             );
-
         }
     );
 
-
-// ============================================================
-// FOLDER BUTTON
-// ============================================================
 
 document
     .getElementById(
@@ -3367,10 +2379,6 @@ document
     );
 
 
-// ============================================================
-// ADD PRODUCT BUTTON
-// ============================================================
-
 document
     .getElementById(
         "addProductBtn"
@@ -3381,10 +2389,6 @@ document
     );
 
 
-// ============================================================
-// QUICK ADD
-// ============================================================
-
 document
     .getElementById(
         "quickAddProduct"
@@ -3393,19 +2397,13 @@ document
         "click",
         () => {
 
-            showPage(
-                "products"
-            );
+            showPage("products");
 
             openAddProductModal();
 
         }
     );
 
-
-// ============================================================
-// QUICK SALE
-// ============================================================
 
 document
     .getElementById(
@@ -3415,19 +2413,13 @@ document
         "click",
         () => {
 
-            showPage(
-                "sale"
-            );
+            showPage("sale");
 
             renderCart();
 
         }
     );
 
-
-// ============================================================
-// PRODUCT SEARCH
-// ============================================================
 
 document
     .getElementById(
@@ -3445,10 +2437,6 @@ document
     );
 
 
-// ============================================================
-// INVENTORY SEARCH
-// ============================================================
-
 document
     .getElementById(
         "inventorySearch"
@@ -3464,10 +2452,6 @@ document
         }
     );
 
-
-// ============================================================
-// SALE SEARCH
-// ============================================================
 
 document
     .getElementById(
@@ -3485,10 +2469,6 @@ document
     );
 
 
-// ============================================================
-// CLEAR CART
-// ============================================================
-
 document
     .getElementById(
         "clearCartBtn"
@@ -3505,10 +2485,6 @@ document
     );
 
 
-// ============================================================
-// CHECKOUT
-// ============================================================
-
 document
     .getElementById(
         "checkoutBtn"
@@ -3523,23 +2499,14 @@ document
 
             } catch (error) {
 
-                console.error(
-                    error
-                );
-
                 showToast(
                     error.message ||
                     "ثبت فروش ناموفق بود."
                 );
             }
-
         }
     );
 
-
-// ============================================================
-// LOW STOCK
-// ============================================================
 
 document
     .getElementById(
@@ -3547,23 +2514,19 @@ document
     )
     .addEventListener(
         "click",
-        async () => {
+        () => {
 
             showPage(
                 "inventory"
             );
 
-            await renderInventory();
+            renderInventory();
 
-            await renderInventorySummary();
+            renderInventorySummary();
 
         }
     );
 
-
-// ============================================================
-// BARCODE ENTER
-// ============================================================
 
 document
     .getElementById(
@@ -3580,21 +2543,15 @@ document
 
                 event.preventDefault();
 
-
                 document
                     .getElementById(
                         "productName"
                     )
                     .focus();
             }
-
         }
     );
 
-
-// ============================================================
-// BARCODE SCANNER PLACEHOLDER
-// ============================================================
 
 document
     .getElementById(
@@ -3613,13 +2570,12 @@ document
 
 
 // ============================================================
-// REFRESH ALL
+// REFRESH
 // ============================================================
 
 async function refreshAll() {
 
     await renderDashboard();
-
 
     await renderProducts(
         document
@@ -3629,7 +2585,6 @@ async function refreshAll() {
             .value
     );
 
-
     await renderInventory(
         document
             .getElementById(
@@ -3638,47 +2593,10 @@ async function refreshAll() {
             .value
     );
 
-
     await renderInventorySummary();
-
 
     await renderCart();
 }
-
-
-// ============================================================
-// RECONNECT ON PAGE VISIBILITY
-//
-// اگر صفحه دوباره فعال شد، فقط در صورتی که
-// اتصال فعلی از بین رفته باشد تلاش می‌کنیم.
-//
-// هر بار Refresh درخواست انتخاب پوشه نمی‌دهیم.
-// ============================================================
-
-document.addEventListener(
-    "visibilitychange",
-    async () => {
-
-        if (
-            document.visibilityState !==
-            "visible"
-        ) {
-
-            return;
-        }
-
-
-        if (
-            folderConnected
-        ) {
-
-            return;
-        }
-
-
-        await tryAutoConnect();
-    }
-);
 
 
 // ============================================================
@@ -3688,67 +2606,104 @@ document.addEventListener(
 async function initApp() {
 
     if (
-        !isFolderAPIAvailable()
+        !("showDirectoryPicker" in window)
     ) {
 
         setConnectionStatus(
-            "مرورگر از اتصال مستقیم پوشه پشتیبانی نمی‌کند",
-            "error"
+            "مرورگر از اتصال پوشه پشتیبانی نمی‌کند"
         );
-
 
         showToast(
-            "برای اتصال مستقیم پوشه از Chrome یا مرورگر سازگار استفاده کنید."
+            "برای این قابلیت از Chrome یا مرورگر سازگار استفاده کنید."
         );
-
-
-        // دیتابیس را عمداً خالی نمی‌کنیم.
-        // هیچ داده‌ای از پوشه پاک نمی‌شود.
 
         return;
     }
 
+    setConnectionStatus(
+        "در حال بازیابی اطلاعات..."
+    );
 
     try {
 
+        // ====================================================
         // مهم:
-        //
-        // اینجا دیگر database را
-        // createEmptyDatabase نمی‌کنیم.
-        //
-        // اگر اتصال خودکار موفق نشد،
-        // اطلاعاتی که قبلاً در حافظه برنامه
-        // وجود دارد دستکاری نمی‌شود.
+        // اول Handle قبلی را پیدا می‌کنیم.
+        // ====================================================
 
-        const connected =
-            await tryAutoConnect();
+        const handle =
+            await getFolderHandle();
 
+        if (handle) {
 
-        if (connected) {
+            folderHandle =
+                handle;
 
-            console.log(
-                "Bizadshop: اتصال خودکار موفق بود."
-            );
+            const permission =
+                await getFolderPermission(
+                    folderHandle
+                );
 
-        } else {
+            if (
+                permission === "granted"
+            ) {
 
-            console.log(
-                "Bizadshop: اتصال خودکار انجام نشد."
-            );
+                // =================================================
+                // اینجا اطلاعات فایل قبلی خوانده می‌شود.
+                // =================================================
 
+                await loadDataFromFolder();
+
+                setConnectionStatus(
+                    "متصل به پوشه: " +
+                    folderHandle.name
+                );
+
+                await refreshAll();
+
+                console.log(
+                    "Bizadshop: اطلاعات قبلی بازیابی شد."
+                );
+
+                return;
+            }
         }
+
+        // ========================================================
+        // اگر Handle وجود ندارد یا مجوز واقعاً از بین رفته:
+        // دیتابیس را صفر نمی‌کنیم.
+        // ========================================================
+
+        setConnectionStatus(
+            "برای اتصال اولیه پوشه را انتخاب کنید"
+        );
+
+        // اطلاعات خالی فقط در حافظه است.
+        // روی فایل قبلی چیزی نوشته نمی‌شود.
+        database =
+            createEmptyDatabase();
+
+        await refreshAll();
 
     } catch (error) {
 
         console.error(
-            "initApp:",
+            "Bizadshop initialization error:",
             error
         );
 
+        // ========================================================
+        // خیلی مهم:
+        // در صورت خطای اتصال، اطلاعات موجود را با صفر
+        // جایگزین نمی‌کنیم.
+        // ========================================================
 
         setConnectionStatus(
-            "برای اتصال دوباره روی 📁 بزنید",
-            "error"
+            "اتصال پوشه نیاز به تأیید دارد"
+        );
+
+        showToast(
+            "اتصال خودکار به پوشه انجام نشد. از ⚙️ پوشه را دوباره انتخاب کنید."
         );
     }
 }
@@ -3759,19 +2714,16 @@ async function initApp() {
 // ============================================================
 
 if (
-    document.readyState ===
-    "loading"
+    document.readyState === "loading"
 ) {
 
     document.addEventListener(
         "DOMContentLoaded",
-        initApp,
-        {
-            once: true
-        }
+        initApp
     );
 
 } else {
 
     initApp();
 }
+```
