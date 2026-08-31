@@ -23,35 +23,27 @@
 
 <div class="app">
 
-    <!-- ==================================================
-         HEADER
-         ================================================== -->
+    <!-- ================= HEADER ================= -->
 
     <header class="topbar">
 
         <div class="brand-area">
-
             <h1>Bizadshop</h1>
-
-            <div class="brand-subtitle">
-                مدیریت فروشگاه
-            </div>
+            <span>مدیریت فروشگاه</span>
 
             <div
                 id="connectionStatus"
                 class="connection-status"
             >
-                در حال اتصال...
+                در حال بررسی اتصال...
             </div>
-
         </div>
-
 
         <button
             class="icon-button"
             id="settingsBtn"
             type="button"
-            title="اتصال به پوشه"
+            title="اتصال پوشه"
         >
             📁
         </button>
@@ -59,9 +51,7 @@
     </header>
 
 
-    <!-- ==================================================
-         NAVIGATION
-         ================================================== -->
+    <!-- ================= NAVIGATION ================= -->
 
     <nav class="navigation">
 
@@ -74,7 +64,6 @@
             <small>خانه</small>
         </button>
 
-
         <button
             class="nav-btn"
             data-page="products"
@@ -84,7 +73,6 @@
             <small>کالاها</small>
         </button>
 
-
         <button
             class="nav-btn"
             data-page="sale"
@@ -93,7 +81,6 @@
             <span>🧾</span>
             <small>فروش</small>
         </button>
-
 
         <button
             class="nav-btn"
@@ -107,16 +94,12 @@
     </nav>
 
 
-    <!-- ==================================================
-         MAIN
-         ================================================== -->
+    <!-- ================= MAIN ================= -->
 
     <main class="content">
 
 
-        <!-- ==================================================
-             DASHBOARD
-             ================================================== -->
+        <!-- ================= DASHBOARD ================= -->
 
         <section
             id="dashboardPage"
@@ -141,10 +124,7 @@
 
                     <div>
                         <small>تعداد کالا</small>
-
-                        <strong id="totalProducts">
-                            0
-                        </strong>
+                        <strong id="totalProducts">0</strong>
                     </div>
 
                 </div>
@@ -156,10 +136,7 @@
 
                     <div>
                         <small>مجموع موجودی</small>
-
-                        <strong id="totalStock">
-                            0
-                        </strong>
+                        <strong id="totalStock">0</strong>
                     </div>
 
                 </div>
@@ -171,10 +148,7 @@
 
                     <div>
                         <small>فروش امروز</small>
-
-                        <strong id="todaySales">
-                            0
-                        </strong>
+                        <strong id="todaySales">0</strong>
                     </div>
 
                 </div>
@@ -186,10 +160,7 @@
 
                     <div>
                         <small>مبلغ فروش امروز</small>
-
-                        <strong id="todaySalesAmount">
-                            0 تومان
-                        </strong>
+                        <strong id="todaySalesAmount">0 تومان</strong>
                     </div>
 
                 </div>
@@ -205,14 +176,8 @@
                     type="button"
                 >
                     <span>➕</span>
-
-                    <strong>
-                        افزودن کالا
-                    </strong>
-
-                    <small>
-                        ثبت کالای جدید
-                    </small>
+                    <strong>افزودن کالا</strong>
+                    <small>ثبت کالای جدید</small>
                 </button>
 
 
@@ -222,14 +187,8 @@
                     type="button"
                 >
                     <span>🛒</span>
-
-                    <strong>
-                        ثبت فروش
-                    </strong>
-
-                    <small>
-                        شروع فروش جدید
-                    </small>
+                    <strong>ثبت فروش</strong>
+                    <small>شروع فروش جدید</small>
                 </button>
 
             </div>
@@ -239,9 +198,7 @@
 
                 <div class="section-header">
 
-                    <h3>
-                        کالاهای کم‌موجودی
-                    </h3>
+                    <h3>کالاهای کم‌موجودی</h3>
 
                     <button
                         id="showLowStock"
@@ -252,13 +209,10 @@
 
                 </div>
 
-
                 <div id="lowStockList">
-
                     <div class="empty">
                         کالایی وجود ندارد.
                     </div>
-
                 </div>
 
             </div>
@@ -266,9 +220,7 @@
         </section>
 
 
-        <!-- ==================================================
-             PRODUCTS
-             ================================================== -->
+        <!-- ================= PRODUCTS ================= -->
 
         <section
             id="productsPage"
@@ -281,7 +233,6 @@
                     <h2>کالاها</h2>
                     <p>مدیریت کالاهای فروشگاه</p>
                 </div>
-
 
                 <button
                     class="primary-button"
@@ -319,9 +270,7 @@
         </section>
 
 
-        <!-- ==================================================
-             SALE
-             ================================================== -->
+        <!-- ================= SALE ================= -->
 
         <section
             id="salePage"
@@ -347,7 +296,6 @@
                     autocomplete="off"
                 >
 
-
                 <button
                     id="scanBarcodeBtn"
                     type="button"
@@ -365,9 +313,7 @@
 
                 <div class="section-header">
 
-                    <h3>
-                        سبد فروش
-                    </h3>
+                    <h3>سبد فروش</h3>
 
                     <button
                         id="clearCartBtn"
@@ -390,9 +336,7 @@
 
                 <div class="sale-total">
 
-                    <span>
-                        مبلغ نهایی
-                    </span>
+                    <span>مبلغ نهایی</span>
 
                     <strong id="cartTotal">
                         0 تومان
@@ -414,9 +358,7 @@
         </section>
 
 
-        <!-- ==================================================
-             INVENTORY
-             ================================================== -->
+        <!-- ================= INVENTORY ================= -->
 
         <section
             id="inventoryPage"
@@ -436,28 +378,13 @@
             <div class="inventory-summary">
 
                 <div>
-
-                    <small>
-                        تعداد کالا
-                    </small>
-
-                    <strong id="inventoryProductCount">
-                        0
-                    </strong>
-
+                    <small>تعداد کالا</small>
+                    <strong id="inventoryProductCount">0</strong>
                 </div>
 
-
                 <div>
-
-                    <small>
-                        مجموع موجودی
-                    </small>
-
-                    <strong id="inventoryTotalStock">
-                        0
-                    </strong>
-
+                    <small>مجموع موجودی</small>
+                    <strong id="inventoryTotalStock">0</strong>
                 </div>
 
             </div>
@@ -490,9 +417,7 @@
     </main>
 
 
-    <!-- ==================================================
-         PRODUCT MODAL
-         ================================================== -->
+    <!-- ================= PRODUCT MODAL ================= -->
 
     <div
         class="modal"
@@ -506,7 +431,6 @@
                 <h3 id="productModalTitle">
                     افزودن کالا
                 </h3>
-
 
                 <button
                     class="close-button"
@@ -606,29 +530,12 @@
 
                         <select id="productUnit">
 
-                            <option value="عدد">
-                                عدد
-                            </option>
-
-                            <option value="کیلو">
-                                کیلو
-                            </option>
-
-                            <option value="گرم">
-                                گرم
-                            </option>
-
-                            <option value="لیتر">
-                                لیتر
-                            </option>
-
-                            <option value="متر">
-                                متر
-                            </option>
-
-                            <option value="بسته">
-                                بسته
-                            </option>
+                            <option value="عدد">عدد</option>
+                            <option value="کیلو">کیلو</option>
+                            <option value="گرم">گرم</option>
+                            <option value="لیتر">لیتر</option>
+                            <option value="متر">متر</option>
+                            <option value="بسته">بسته</option>
 
                         </select>
 
@@ -661,7 +568,6 @@
                         انصراف
                     </button>
 
-
                     <button
                         type="submit"
                         class="primary-button"
@@ -678,9 +584,7 @@
     </div>
 
 
-    <!-- ==================================================
-         STOCK MODAL
-         ================================================== -->
+    <!-- ================= STOCK MODAL ================= -->
 
     <div
         class="modal"
@@ -691,10 +595,7 @@
 
             <div class="modal-header">
 
-                <h3>
-                    تغییر موجودی
-                </h3>
-
+                <h3>تغییر موجودی</h3>
 
                 <button
                     class="close-button"
@@ -767,7 +668,6 @@
                         انصراف
                     </button>
 
-
                     <button
                         type="submit"
                         class="primary-button"
@@ -784,9 +684,7 @@
     </div>
 
 
-    <!-- ==================================================
-         TOAST
-         ================================================== -->
+    <!-- ================= TOAST ================= -->
 
     <div
         id="toast"
@@ -800,5 +698,4 @@
 <script src="app.js"></script>
 
 </body>
-
 </html>
