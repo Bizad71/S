@@ -3939,131 +3939,657 @@ document
 
 /* ============================================================
    BARCODE SCANNER
+   ZXing Edition
    ============================================================ */
 
-let barcodeStream = null;
-let barcodeScanTimer = null;
+let barcodeReader = null;
 let barcodeScannerTarget = "sale";
-let barcodeScannerBusy = false;
+let barcodeScannerRunning = false;
+
+
+/* ============================================================
+   GET BARCODE INPUT
+   ============================================================ */
 
 function getBarcodeInput(target) {
-    return document.getElementById(target === "product" ? "productBarcode" : "saleSearch");
+
+    return document.getElementById(
+        target === "product"
+            ? "productBarcode"
+            : "saleSearch"
+    );
 }
+
+
+/* ============================================================
+   CLOSE BARCODE SCANNER
+   ============================================================ */
 
 function closeBarcodeScanner() {
-    const modal = document.getElementById("barcodeScannerModal");
-    const video = document.getElementById("barcodeVideo");
 
-    if (barcodeScanTimer) {
-        clearTimeout(barcodeScanTimer);
-        barcodeScanTimer = null;
-    }
+    const modal =
+        document.getElementById(
+            "barcodeScannerModal"
+        );
 
-    if (barcodeStream) {
-        barcodeStream.getTracks().forEach(track => track.stop());
-        barcodeStream = null;
-    }
+    const video =
+        document.getElementById(
+            "barcodeVideo"
+        );
 
-    if (video) {
-        video.pause();
-        video.srcObject = null;
-    }
+    barcodeScannerRunning = false;
 
-    barcodeScannerBusy = false;
-
-    if (modal) {
-        modal.classList.remove("open");
-        modal.setAttribute("aria-hidden", "true");
-    }
-}
-
-async function startBarcodeScanner(target = "sale") {
-    const modal = document.getElementById("barcodeScannerModal");
-    const video = document.getElementById("barcodeVideo");
-    const status = document.getElementById("barcodeScannerStatus");
-
-    barcodeScannerTarget = target;
-    if (!modal || !video || !status) return;
-
-    modal.classList.add("open");
-    modal.setAttribute("aria-hidden", "false");
-    status.textContent = "در حال باز کردن دوربین...";
-
-    if (!navigator.mediaDevices?.getUserMedia) {
-        status.textContent = "دوربین این مرورگر در دسترس نیست. بارکد را دستی وارد کنید.";
-        return;
-    }
-
-    if (!("BarcodeDetector" in window)) {
-        status.textContent = "اسکن خودکار در این مرورگر پشتیبانی نمی‌شود؛ بارکد را دستی وارد کنید.";
-        return;
-    }
 
     try {
-        barcodeStream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } },
-            audio: false
-        });
 
-        video.srcObject = barcodeStream;
-        await video.play();
+        if (barcodeReader) {
 
-        const detector = new BarcodeDetector();
-        barcodeScannerBusy = false;
-        status.textContent = "دوربین آماده است؛ بارکد را روبه‌روی دوربین بگیرید.";
+            barcodeReader.reset();
 
-        const scan = async () => {
-            if (!barcodeScannerBusy && video.readyState >= 2) {
-                try {
-                    const codes = await detector.detect(video);
-                    if (codes.length) {
-                        const value = String(codes[0].rawValue || "").trim();
-                        if (value) {
-                            barcodeScannerBusy = true;
-                            const input = getBarcodeInput(barcodeScannerTarget);
-                            if (input) {
-                                input.value = value;
-                                input.dispatchEvent(new Event("input", { bubbles: true }));
-                                input.focus();
-                            }
-                            closeBarcodeScanner();
-                            showToast(`بارکد ${value} شناسایی شد.`);
-                            return;
-                        }
-                    }
-                } catch (error) {
-                    console.warn("Barcode detection:", error);
-                }
-            }
-            barcodeScanTimer = setTimeout(scan, 180);
-        };
-        scan();
+        }
+
     } catch (error) {
-        console.error("Camera error:", error);
-        let message = "دسترسی به دوربین ممکن نشد.";
-        if (error?.name === "NotAllowedError") message = "اجازه دوربین داده نشد. از تنظیمات مرورگر اجازه دوربین را فعال کنید.";
-        else if (error?.name === "NotFoundError") message = "دوربین پیدا نشد.";
-        status.textContent = message + " بارکد را دستی وارد کنید.";
+
+        console.warn(
+            "Barcode reader reset:",
+            error
+        );
+
     }
+
+
+    barcodeReader = null;
+
+
+    if (video) {
+
+        try {
+
+            video.pause();
+
+        } catch (error) {}
+
+        video.srcObject = null;
+
+    }
+
+
+    if (modal) {
+
+        modal.classList.remove(
+            "open"
+        );
+
+        modal.setAttribute(
+            "aria-hidden",
+            "true"
+        );
+
+    }
+
 }
 
-document.getElementById("scanBarcodeBtn")?.addEventListener("click", () => startBarcodeScanner("sale"));
-document.getElementById("productScanBarcodeBtn")?.addEventListener("click", () => startBarcodeScanner("product"));
-document.getElementById("closeBarcodeScannerBtn")?.addEventListener("click", closeBarcodeScanner);
-document.getElementById("manualBarcodeBtn")?.addEventListener("click", () => {
-    const input = getBarcodeInput(barcodeScannerTarget);
+
+/* ============================================================
+   HANDLE SCANNED BARCODE
+   ============================================================ */
+
+async function handleScannedBarcode(
+    value
+) {
+
+    value =
+        String(
+            value || ""
+        ).trim();
+
+
+    if (!value) {
+
+        return;
+
+    }
+
+
+    const input =
+        getBarcodeInput(
+            barcodeScannerTarget
+        );
+
+
+    if (input) {
+
+        input.value = value;
+
+        input.dispatchEvent(
+            new Event(
+                "input",
+                {
+                    bubbles: true
+                }
+            )
+        );
+
+    }
+
+
+    /*
+     اگر در صفحه فروش هستیم،
+     بعد از اسکن کالا را پیدا می‌کنیم
+     و مستقیماً وارد سبد می‌کنیم.
+    */
+
+    if (
+        barcodeScannerTarget ===
+        "sale"
+    ) {
+
+        const product =
+            await getProductByBarcode(
+                value
+            );
+
+
+        if (product) {
+
+            const quantity =
+                await getQuantity(
+                    product.id
+                );
+
+
+            if (quantity > 0) {
+
+                await addToCart(
+                    product.id
+                );
+
+
+                if (input) {
+
+                    input.value = "";
+
+                }
+
+
+                showToast(
+                    `«${product.name}» به سبد اضافه شد.`
+                );
+
+            } else {
+
+                showToast(
+                    `«${product.name}» موجود نیست.`
+                );
+
+            }
+
+        } else {
+
+            showToast(
+                "کالایی با این بارکد پیدا نشد."
+            );
+
+        }
+
+    } else {
+
+        /*
+         در افزودن کالا فقط بارکد را
+         داخل فیلد قرار می‌دهیم.
+        */
+
+        if (input) {
+
+            input.focus();
+
+            input.select();
+
+        }
+
+
+        showToast(
+            `بارکد ${value} شناسایی شد.`
+        );
+
+    }
+
+}
+
+
+/* ============================================================
+   START BARCODE SCANNER
+   ============================================================ */
+
+async function startBarcodeScanner(
+    target = "sale"
+) {
+
+    barcodeScannerTarget =
+        target;
+
+
+    const modal =
+        document.getElementById(
+            "barcodeScannerModal"
+        );
+
+    const video =
+        document.getElementById(
+            "barcodeVideo"
+        );
+
+    const status =
+        document.getElementById(
+            "barcodeScannerStatus"
+        );
+
+
+    if (
+        !modal ||
+        !video ||
+        !status
+    ) {
+
+        return;
+
+    }
+
+
+    modal.classList.add(
+        "open"
+    );
+
+    modal.setAttribute(
+        "aria-hidden",
+        "false"
+    );
+
+
+    status.textContent =
+        "در حال آماده‌سازی دوربین...";
+
+
+    /*
+     بررسی HTTPS
+    */
+
+    if (
+        location.protocol !==
+            "https:" &&
+        location.hostname !==
+            "localhost"
+    ) {
+
+        status.textContent =
+            "برای استفاده از دوربین، سایت باید با HTTPS باز شود.";
+
+        return;
+
+    }
+
+
+    /*
+     بررسی کتابخانه
+    */
+
+    if (
+        typeof ZXing ===
+        "undefined"
+    ) {
+
+        status.textContent =
+            "کتابخانه اسکن بارکد بارگذاری نشده است.";
+
+        return;
+
+    }
+
+
+    /*
+     اگر اسکنر قبلی فعال است،
+     اول متوقفش می‌کنیم.
+    */
+
     closeBarcodeScanner();
-    input?.focus();
-    input?.select?.();
-});
-document.getElementById("barcodeScannerModal")?.addEventListener("click", event => {
-    if (event.target.id === "barcodeScannerModal") closeBarcodeScanner();
-});
-document.addEventListener("keydown", event => {
-    if (event.key === "Escape") closeBarcodeScanner();
-});
 
 
+    /*
+     دوباره مودال را باز می‌کنیم.
+    */
+
+    modal.classList.add(
+        "open"
+    );
+
+    modal.setAttribute(
+        "aria-hidden",
+        "false"
+    );
+
+
+    try {
+
+        barcodeReader =
+            new ZXing.BrowserMultiFormatReader();
+
+
+        status.textContent =
+            "در حال پیدا کردن دوربین...";
+
+
+        /*
+         دوربین‌های موجود را پیدا می‌کنیم.
+        */
+
+        const devices =
+            await ZXing.BrowserCodeReader
+                .listVideoInputDevices();
+
+
+        if (
+            !devices ||
+            !devices.length
+        ) {
+
+            status.textContent =
+                "هیچ دوربینی پیدا نشد.";
+
+            return;
+
+        }
+
+
+        /*
+         اول تلاش می‌کنیم دوربین پشت گوشی
+         را پیدا کنیم.
+        */
+
+        let selectedDevice =
+            devices.find(
+                device => {
+
+                    const label =
+                        String(
+                            device.label ||
+                            ""
+                        ).toLowerCase();
+
+
+                    return (
+                        label.includes(
+                            "back"
+                        ) ||
+                        label.includes(
+                            "rear"
+                        ) ||
+                        label.includes(
+                            "environment"
+                        )
+                    );
+
+                }
+            );
+
+
+        /*
+         اگر اسم دوربین مشخص نبود،
+         آخرین دوربین را انتخاب می‌کنیم.
+         در اکثر گوشی‌ها دوربین پشت است.
+        */
+
+        if (!selectedDevice) {
+
+            selectedDevice =
+                devices[
+                    devices.length - 1
+                ];
+
+        }
+
+
+        status.textContent =
+            "دوربین آماده است؛ بارکد را داخل کادر قرار دهید.";
+
+
+        barcodeScannerRunning =
+            true;
+
+
+        /*
+         شروع اسکن مداوم
+        */
+
+        await barcodeReader.decodeFromVideoDevice(
+            selectedDevice.deviceId,
+            video,
+            async (
+                result,
+                error
+            ) => {
+
+                if (
+                    !barcodeScannerRunning
+                ) {
+
+                    return;
+
+                }
+
+
+                if (result) {
+
+                    const value =
+                        result.getText();
+
+
+                    if (
+                        value &&
+                        value.trim()
+                    ) {
+
+                        barcodeScannerRunning =
+                            false;
+
+
+                        closeBarcodeScanner();
+
+
+                        await handleScannedBarcode(
+                            value
+                        );
+
+                    }
+
+                }
+
+            }
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Barcode scanner error:",
+            error
+        );
+
+
+        barcodeScannerRunning =
+            false;
+
+
+        let message =
+            "دوربین قابل استفاده نیست.";
+
+
+        if (
+            error?.name ===
+            "NotAllowedError"
+        ) {
+
+            message =
+                "اجازه دسترسی به دوربین داده نشده است.";
+
+        } else if (
+            error?.name ===
+            "NotFoundError"
+        ) {
+
+            message =
+                "دوربین پیدا نشد.";
+
+        } else if (
+            error?.name ===
+            "NotReadableError"
+        ) {
+
+            message =
+                "دوربین توسط برنامه دیگری استفاده می‌شود.";
+
+        }
+
+
+        status.textContent =
+            message +
+            " می‌توانید بارکد را دستی وارد کنید.";
+
+    }
+
+}
+
+
+/* ============================================================
+   SCANNER BUTTONS
+   ============================================================ */
+
+document
+    .getElementById(
+        "scanBarcodeBtn"
+    )
+    ?.addEventListener(
+        "click",
+        () => {
+
+            startBarcodeScanner(
+                "sale"
+            );
+
+        }
+    );
+
+
+document
+    .getElementById(
+        "productScanBarcodeBtn"
+    )
+    ?.addEventListener(
+        "click",
+        () => {
+
+            startBarcodeScanner(
+                "product"
+            );
+
+        }
+    );
+
+
+/* ============================================================
+   CLOSE BUTTON
+   ============================================================ */
+
+document
+    .getElementById(
+        "closeBarcodeScannerBtn"
+    )
+    ?.addEventListener(
+        "click",
+        () => {
+
+            closeBarcodeScanner();
+
+        }
+    );
+
+
+/* ============================================================
+   MANUAL BARCODE
+   ============================================================ */
+
+document
+    .getElementById(
+        "manualBarcodeBtn"
+    )
+    ?.addEventListener(
+        "click",
+        () => {
+
+            const input =
+                getBarcodeInput(
+                    barcodeScannerTarget
+                );
+
+
+            closeBarcodeScanner();
+
+
+            if (input) {
+
+                input.focus();
+
+                input.select();
+
+            }
+
+        }
+    );
+
+
+/* ============================================================
+   CLOSE BY CLICKING OUTSIDE
+   ============================================================ */
+
+document
+    .getElementById(
+        "barcodeScannerModal"
+    )
+    ?.addEventListener(
+        "click",
+        event => {
+
+            if (
+                event.target.id ===
+                "barcodeScannerModal"
+            ) {
+
+                closeBarcodeScanner();
+
+            }
+
+        }
+    );
+
+
+/* ============================================================
+   ESC
+   ============================================================ */
+
+document.addEventListener(
+    "keydown",
+    event => {
+
+        if (
+            event.key ===
+            "Escape"
+        ) {
+
+            closeBarcodeScanner();
+
+        }
+
+    }
+);
 /* ============================================================
    REFRESH ALL
    ============================================================ */
