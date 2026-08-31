@@ -1,6 +1,6 @@
 /* ============================================================
    Bizadshop
-   Main Styles — UI Improved
+   Main Styles — Final UI
    ============================================================ */
 
 * {
@@ -10,7 +10,7 @@
 }
 
 :root {
-    --bg: #f5f7fb;
+    --bg: #f4f6fa;
     --card: #ffffff;
     --text: #111827;
     --muted: #6b7280;
@@ -20,11 +20,13 @@
     --primary-dark: #1d4ed8;
     --primary-light: #eff6ff;
 
-    --danger: #dc2626;
-    --danger-light: #fef2f2;
-
     --success: #16a34a;
+    --success-dark: #15803d;
     --success-light: #f0fdf4;
+
+    --danger: #dc2626;
+    --danger-dark: #b91c1c;
+    --danger-light: #fef2f2;
 
     --warning: #d97706;
     --warning-light: #fffbeb;
@@ -36,9 +38,9 @@
     --radius-md: 14px;
     --radius-lg: 18px;
 
-    --shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.04);
-    --shadow-md: 0 8px 25px rgba(15, 23, 42, 0.07);
-    --shadow-lg: 0 15px 40px rgba(15, 23, 42, 0.12);
+    --shadow-sm: 0 2px 8px rgba(15, 23, 42, .05);
+    --shadow-md: 0 8px 24px rgba(15, 23, 42, .08);
+    --shadow-lg: 0 18px 45px rgba(15, 23, 42, .14);
 }
 
 html,
@@ -52,24 +54,17 @@ html {
 }
 
 body {
-    font-family:
-        Tahoma,
-        Arial,
-        sans-serif;
-
+    font-family: Tahoma, Arial, sans-serif;
     background:
         radial-gradient(
-            circle at top right,
-            rgba(37, 99, 235, 0.04),
+            circle at 100% 0,
+            rgba(37, 99, 235, .055),
             transparent 30%
         ),
         var(--bg);
-
     color: var(--text);
-
     min-height: 100vh;
     overflow-x: hidden;
-
     -webkit-font-smoothing: antialiased;
 }
 
@@ -86,7 +81,7 @@ button {
 
 button:disabled {
     cursor: not-allowed;
-    opacity: 0.55;
+    opacity: .55;
 }
 
 input,
@@ -95,7 +90,7 @@ select {
 }
 
 ::selection {
-    background: rgba(37, 99, 235, 0.18);
+    background: rgba(37, 99, 235, .18);
 }
 
 .app {
@@ -116,26 +111,26 @@ select {
     background:
         linear-gradient(
             135deg,
-            #111827 0%,
+            #0f172a 0%,
             #172033 55%,
             #1e293b 100%
         );
 
-    color: white;
+    color: #fff;
 
     display: flex;
     align-items: center;
     justify-content: space-between;
 
+    gap: 14px;
     padding: 10px 18px;
 
     position: sticky;
     top: 0;
-
     z-index: 50;
 
     box-shadow:
-        0 3px 15px rgba(15, 23, 42, 0.14);
+        0 4px 18px rgba(15, 23, 42, .16);
 }
 
 .brand-area {
@@ -148,24 +143,20 @@ select {
     line-height: 1.3;
     margin-bottom: 2px;
     font-weight: 800;
-    letter-spacing: -0.3px;
+    letter-spacing: -.3px;
 }
 
 .topbar .brand-area > span {
     display: block;
-
     font-size: 12px;
     line-height: 1.4;
-
-    color: rgba(255, 255, 255, 0.72);
+    color: rgba(255,255,255,.72);
 }
 
 .connection-status {
     margin-top: 4px;
-
     font-size: 10px;
     line-height: 1.4;
-
     color: #93c5fd;
 
     white-space: nowrap;
@@ -173,8 +164,6 @@ select {
     text-overflow: ellipsis;
 
     max-width: 280px;
-
-    transition: 0.2s;
 }
 
 .connection-status.connected {
@@ -195,11 +184,11 @@ select {
 
     flex-shrink: 0;
 
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255,255,255,.10);
     border-radius: 12px;
 
-    background: rgba(255, 255, 255, 0.09);
-    color: white;
+    background: rgba(255,255,255,.09);
+    color: #fff;
 
     font-size: 19px;
 
@@ -208,18 +197,18 @@ select {
     justify-content: center;
 
     transition:
-        background 0.2s,
-        transform 0.15s,
-        border-color 0.2s;
+        background .2s,
+        transform .15s,
+        border-color .2s;
 }
 
 .icon-button:hover {
-    background: rgba(255, 255, 255, 0.15);
-    border-color: rgba(255, 255, 255, 0.14);
+    background: rgba(255,255,255,.16);
+    border-color: rgba(255,255,255,.18);
 }
 
 .icon-button:active {
-    transform: scale(0.95);
+    transform: scale(.94);
 }
 
 
@@ -237,9 +226,9 @@ select {
     width: 100%;
     height: 70px;
 
-    background: rgba(255, 255, 255, 0.97);
+    background: rgba(255,255,255,.97);
 
-    border-top: 1px solid rgba(229, 231, 235, 0.9);
+    border-top: 1px solid rgba(229,231,235,.9);
 
     display: flex;
     justify-content: center;
@@ -248,7 +237,7 @@ select {
     z-index: 100;
 
     box-shadow:
-        0 -6px 22px rgba(15, 23, 42, 0.07);
+        0 -7px 25px rgba(15,23,42,.08);
 
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -274,9 +263,9 @@ select {
     position: relative;
 
     transition:
-        color 0.2s,
-        background 0.2s,
-        transform 0.15s;
+        color .2s,
+        background .2s,
+        transform .15s;
 }
 
 .nav-btn:hover {
@@ -291,8 +280,7 @@ select {
 .nav-btn span {
     font-size: 21px;
     line-height: 1;
-
-    transition: transform 0.2s;
+    transition: transform .2s;
 }
 
 .nav-btn small {
@@ -333,7 +321,7 @@ select {
 
 .content {
     width: 100%;
-    max-width: 960px;
+    max-width: 1050px;
 
     margin: 0 auto;
 
@@ -343,8 +331,7 @@ select {
 .page {
     display: none;
     width: 100%;
-
-    animation: pageFade 0.2s ease;
+    animation: pageFade .2s ease;
 }
 
 .page.active {
@@ -380,7 +367,7 @@ select {
     margin-bottom: 5px;
 
     font-weight: 800;
-    letter-spacing: -0.3px;
+    letter-spacing: -.3px;
 }
 
 .page-title p {
@@ -392,7 +379,7 @@ select {
 
 
 /* ============================================================
-   BUTTONS
+   BUTTONS — اصلی
    ============================================================ */
 
 .primary-button,
@@ -408,53 +395,86 @@ select {
     font-size: 14px;
     font-weight: bold;
 
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 7px;
+
+    white-space: nowrap;
+
     transition:
-        background 0.2s,
-        transform 0.15s,
-        opacity 0.2s,
-        box-shadow 0.2s;
+        background .2s,
+        transform .15s,
+        opacity .2s,
+        box-shadow .2s,
+        border-color .2s;
 }
+
+
+/* دکمه اصلی */
 
 .primary-button {
     background:
         linear-gradient(
             135deg,
-            var(--primary),
+            #2563eb,
             #3b82f6
         );
 
-    color: white;
+    color: #fff;
+
+    border: 1px solid #2563eb;
 
     box-shadow:
-        0 4px 12px rgba(37, 99, 235, 0.18);
+        0 4px 12px rgba(37,99,235,.18);
 }
 
 .primary-button:hover {
     background:
         linear-gradient(
             135deg,
-            var(--primary-dark),
+            #1d4ed8,
             #2563eb
         );
 
     box-shadow:
-        0 6px 16px rgba(37, 99, 235, 0.24);
+        0 7px 18px rgba(37,99,235,.25);
+
+    transform: translateY(-1px);
 }
 
-.primary-button:active,
-.secondary-button:active,
-.checkout-button:active {
-    transform: scale(0.98);
+.primary-button:active {
+    transform: scale(.97);
 }
+
+
+/* دکمه ثانویه */
 
 .secondary-button {
-    background: #f3f4f6;
-    color: var(--text);
+    background: #fff;
+
+    color: #374151;
+
+    border: 1px solid #d1d5db;
+
+    box-shadow: 0 2px 6px rgba(15,23,42,.04);
 }
 
 .secondary-button:hover {
-    background: #e5e7eb;
+    background: #f8fafc;
+    border-color: #9ca3af;
+
+    box-shadow:
+        0 4px 10px rgba(15,23,42,.07);
 }
+
+.secondary-button:active {
+    transform: scale(.97);
+}
+
+
+/* دکمه ثبت فروش */
 
 .checkout-button {
     width: 100%;
@@ -466,19 +486,32 @@ select {
             #22c55e
         );
 
-    color: white;
+    color: #fff;
 
     margin-top: 15px;
 
+    border: 1px solid #16a34a;
+
     box-shadow:
-        0 4px 12px rgba(22, 163, 74, 0.16);
+        0 4px 12px rgba(22,163,74,.17);
 }
 
 .checkout-button:hover {
-    opacity: 0.94;
+    background:
+        linear-gradient(
+            135deg,
+            #15803d,
+            #16a34a
+        );
 
     box-shadow:
-        0 6px 16px rgba(22, 163, 74, 0.22);
+        0 7px 18px rgba(22,163,74,.24);
+
+    transform: translateY(-1px);
+}
+
+.checkout-button:active {
+    transform: scale(.98);
 }
 
 
@@ -488,11 +521,8 @@ select {
 
 .stats-grid {
     display: grid;
-
     grid-template-columns: repeat(2, 1fr);
-
     gap: 12px;
-
     margin-bottom: 18px;
 }
 
@@ -502,7 +532,7 @@ select {
     background:
         linear-gradient(
             180deg,
-            #ffffff 0%,
+            #fff 0%,
             #fafcff 100%
         );
 
@@ -520,16 +550,14 @@ select {
     box-shadow: var(--shadow-sm);
 
     transition:
-        transform 0.2s,
-        box-shadow 0.2s,
-        border-color 0.2s;
+        transform .2s,
+        box-shadow .2s,
+        border-color .2s;
 }
 
 .stat-card:hover {
     transform: translateY(-2px);
-
     border-color: #dbe3ef;
-
     box-shadow: var(--shadow-md);
 }
 
@@ -542,7 +570,6 @@ select {
     border-radius: 13px;
 
     background: var(--primary-light);
-
     color: var(--primary);
 
     display: flex;
@@ -595,9 +622,11 @@ select {
     background:
         linear-gradient(
             180deg,
-            #ffffff 0%,
+            #fff 0%,
             #fbfcfe 100%
         );
+
+    color: var(--text);
 
     border-radius: var(--radius-lg);
 
@@ -611,16 +640,16 @@ select {
     gap: 6px;
 
     transition:
-        border-color 0.2s,
-        box-shadow 0.2s,
-        transform 0.15s,
-        background 0.2s;
+        border-color .2s,
+        box-shadow .2s,
+        transform .15s,
+        background .2s;
 }
 
 .big-action:hover {
     border-color: #bfdbfe;
 
-    background: #ffffff;
+    background: #fff;
 
     box-shadow: var(--shadow-md);
 
@@ -628,13 +657,12 @@ select {
 }
 
 .big-action:active {
-    transform: scale(0.99);
+    transform: scale(.99);
 }
 
 .big-action span {
     font-size: 26px;
     line-height: 1;
-
     margin-bottom: 2px;
 }
 
@@ -656,7 +684,7 @@ select {
     background:
         linear-gradient(
             135deg,
-            #ffffff,
+            #fff,
             #f8fbff
         );
 }
@@ -669,7 +697,7 @@ select {
 .section-card {
     width: 100%;
 
-    background: white;
+    background: #fff;
 
     border: 1px solid var(--border);
 
@@ -682,8 +710,8 @@ select {
     box-shadow: var(--shadow-sm);
 
     transition:
-        box-shadow 0.2s,
-        border-color 0.2s;
+        box-shadow .2s,
+        border-color .2s;
 }
 
 .section-card:hover {
@@ -704,7 +732,6 @@ select {
 .section-header h3 {
     font-size: 15px;
     line-height: 1.4;
-
     font-weight: 800;
 }
 
@@ -719,13 +746,13 @@ select {
 
     white-space: nowrap;
 
-    padding: 5px 7px;
+    padding: 6px 8px;
 
     border-radius: 7px;
 
     transition:
-        background 0.2s,
-        color 0.2s;
+        background .2s,
+        color .2s;
 }
 
 .section-header button:hover {
@@ -740,7 +767,7 @@ select {
 .search-box {
     width: 100%;
 
-    background: white;
+    background: #fff;
 
     border: 1px solid var(--border);
 
@@ -760,27 +787,22 @@ select {
     box-shadow: var(--shadow-sm);
 
     transition:
-        border-color 0.2s,
-        box-shadow 0.2s,
-        background 0.2s;
+        border-color .2s,
+        box-shadow .2s;
 }
 
 .search-box:focus-within {
     border-color: #93c5fd;
 
-    background: #ffffff;
-
     box-shadow:
-        0 0 0 3px rgba(37, 99, 235, 0.08),
+        0 0 0 3px rgba(37,99,235,.08),
         var(--shadow-sm);
 }
 
 .search-box > span {
     flex-shrink: 0;
-
     font-size: 15px;
-
-    opacity: 0.7;
+    opacity: .7;
 }
 
 .search-box input {
@@ -809,7 +831,7 @@ select {
     background:
         linear-gradient(
             180deg,
-            #ffffff,
+            #fff,
             #fcfdff
         );
 
@@ -824,16 +846,14 @@ select {
     box-shadow: var(--shadow-sm);
 
     transition:
-        transform 0.2s,
-        box-shadow 0.2s,
-        border-color 0.2s;
+        transform .2s,
+        box-shadow .2s,
+        border-color .2s;
 }
 
 .product-card:hover {
     border-color: #d6deeb;
-
     box-shadow: var(--shadow-md);
-
     transform: translateY(-1px);
 }
 
@@ -841,7 +861,6 @@ select {
     display: flex;
 
     justify-content: space-between;
-
     align-items: flex-start;
 
     gap: 12px;
@@ -876,7 +895,6 @@ select {
 
 .product-price {
     flex-shrink: 0;
-
     text-align: left;
 }
 
@@ -915,7 +933,6 @@ select {
 .stock {
     font-size: 12px;
     font-weight: bold;
-
     white-space: nowrap;
 }
 
@@ -941,47 +958,65 @@ select {
     justify-content: flex-end;
 }
 
+
+/* ============================================================
+   SMALL BUTTONS
+   ============================================================ */
+
 .small-button {
-    border: 1px solid transparent;
+    border: 1px solid #dfe3e8;
 
-    background: #f3f4f6;
+    background: #f8fafc;
 
-    color: var(--text);
+    color: #374151;
 
     border-radius: 8px;
 
     min-height: 34px;
 
-    padding: 0 10px;
+    padding: 0 11px;
 
     font-size: 11px;
+    font-weight: 600;
 
     transition:
-        background 0.2s,
-        transform 0.15s,
-        border-color 0.2s;
+        background .2s,
+        transform .15s,
+        border-color .2s,
+        color .2s,
+        box-shadow .2s;
 }
 
 .small-button:hover {
-    background: #e5e7eb;
+    background: #eef2f7;
 
-    border-color: #d1d5db;
+    border-color: #cbd5e1;
+
+    box-shadow:
+        0 2px 7px rgba(15,23,42,.05);
 }
 
 .small-button:active {
-    transform: scale(0.97);
+    transform: scale(.96);
 }
+
+
+/* دکمه حذف */
 
 .small-button.danger {
     color: var(--danger);
 
     background: var(--danger-light);
+
+    border-color: #fecaca;
 }
 
 .small-button.danger:hover {
     background: #fee2e2;
 
-    border-color: #fecaca;
+    border-color: #fca5a5;
+
+    color: var(--danger-dark);
 }
 
 
@@ -1014,22 +1049,22 @@ select {
 
     outline: none;
 
-    background: white;
+    background: #fff;
 
     font-size: 14px;
 
     box-shadow: var(--shadow-sm);
 
     transition:
-        border-color 0.2s,
-        box-shadow 0.2s;
+        border-color .2s,
+        box-shadow .2s;
 }
 
 .sale-search input:focus {
     border-color: #93c5fd;
 
     box-shadow:
-        0 0 0 3px rgba(37, 99, 235, 0.08),
+        0 0 0 3px rgba(37,99,235,.08),
         var(--shadow-sm);
 }
 
@@ -1039,30 +1074,35 @@ select {
     border: 0;
 
     background: var(--dark);
-    color: white;
+
+    color: #fff;
 
     border-radius: 12px;
 
-    padding: 0 15px;
+    padding: 0 16px;
 
     font-size: 13px;
     font-weight: bold;
 
     transition:
-        background 0.2s,
-        transform 0.15s;
+        background .2s,
+        transform .15s,
+        box-shadow .2s;
 }
 
 .sale-search button:hover {
     background: var(--dark-2);
+
+    box-shadow:
+        0 5px 13px rgba(15,23,42,.14);
 }
 
 .sale-search button:active {
-    transform: scale(0.98);
+    transform: scale(.97);
 }
 
 .sale-result {
-    background: white;
+    background: #fff;
 
     border: 1px solid var(--border);
 
@@ -1164,7 +1204,7 @@ select {
     width: 30px;
     height: 30px;
 
-    border: 0;
+    border: 1px solid #e5e7eb;
 
     background: #f3f4f6;
 
@@ -1175,16 +1215,18 @@ select {
     font-size: 16px;
 
     transition:
-        background 0.2s,
-        transform 0.15s;
+        background .2s,
+        transform .15s,
+        border-color .2s;
 }
 
 .quantity-button:hover {
     background: #e5e7eb;
+    border-color: #d1d5db;
 }
 
 .quantity-button:active {
-    transform: scale(0.92);
+    transform: scale(.92);
 }
 
 .sale-total {
@@ -1205,7 +1247,6 @@ select {
 
 .sale-total strong {
     font-size: 18px;
-
     white-space: nowrap;
 }
 
@@ -1228,7 +1269,7 @@ select {
     background:
         linear-gradient(
             180deg,
-            #ffffff,
+            #fff,
             #fbfcfe
         );
 
@@ -1285,7 +1326,7 @@ select {
     width: 100%;
     height: 100%;
 
-    background: rgba(15, 23, 42, 0.58);
+    background: rgba(15,23,42,.58);
 
     display: none;
 
@@ -1305,7 +1346,7 @@ select {
 }
 
 .modal-box {
-    background: white;
+    background: #fff;
 
     width: 100%;
     max-width: 600px;
@@ -1320,7 +1361,7 @@ select {
 
     box-shadow: var(--shadow-lg);
 
-    animation: modalUp 0.22s ease;
+    animation: modalUp .22s ease;
 }
 
 @keyframes modalUp {
@@ -1349,6 +1390,7 @@ select {
 
 .modal-header h3 {
     font-size: 18px;
+
     line-height: 1.4;
 
     font-weight: 800;
@@ -1373,8 +1415,8 @@ select {
     line-height: 1;
 
     transition:
-        background 0.2s,
-        transform 0.15s;
+        background .2s,
+        transform .15s;
 }
 
 .close-button:hover {
@@ -1382,7 +1424,7 @@ select {
 }
 
 .close-button:active {
-    transform: scale(0.94);
+    transform: scale(.94);
 }
 
 .modal-box label {
@@ -1410,14 +1452,13 @@ select {
 
     outline: none;
 
-    background: white;
+    background: #fff;
 
     font-size: 13px;
 
     transition:
-        border-color 0.2s,
-        box-shadow 0.2s,
-        background 0.2s;
+        border-color .2s,
+        box-shadow .2s;
 }
 
 .modal-box input:hover,
@@ -1429,10 +1470,8 @@ select {
 .modal-box select:focus {
     border-color: var(--primary);
 
-    background: #ffffff;
-
     box-shadow:
-        0 0 0 3px rgba(37, 99, 235, 0.08);
+        0 0 0 3px rgba(37,99,235,.08);
 }
 
 .two-columns {
@@ -1485,11 +1524,11 @@ select {
 
     bottom: 88px;
 
-    transform: translate(-50%, 20px);
+    transform: translate(-50%,20px);
 
     background: #111827;
 
-    color: white;
+    color: #fff;
 
     padding: 11px 17px;
 
@@ -1502,8 +1541,8 @@ select {
     pointer-events: none;
 
     transition:
-        opacity 0.25s,
-        transform 0.25s;
+        opacity .25s,
+        transform .25s;
 
     z-index: 500;
 
@@ -1514,13 +1553,13 @@ select {
     line-height: 1.6;
 
     box-shadow:
-        0 8px 25px rgba(0, 0, 0, 0.18);
+        0 8px 25px rgba(0,0,0,.18);
 }
 
 .toast.show {
     opacity: 1;
 
-    transform: translate(-50%, 0);
+    transform: translate(-50%,0);
 }
 
 
@@ -1539,7 +1578,6 @@ select {
 
 ::-webkit-scrollbar-thumb {
     background: #cbd5e1;
-
     border-radius: 20px;
 }
 
@@ -1564,8 +1602,6 @@ select {
     }
 
     .content {
-        max-width: 1000px;
-
         padding-top: 32px;
         padding-left: 20px;
         padding-right: 20px;
@@ -1581,13 +1617,11 @@ select {
 
     .modal {
         align-items: center;
-
         padding: 20px;
     }
 
     .modal-box {
         border-radius: 20px;
-
         max-height: 90vh;
     }
 
@@ -1634,9 +1668,7 @@ select {
 
     .topbar {
         min-height: 68px;
-
-        padding:
-            9px 11px;
+        padding: 9px 11px;
     }
 
     .topbar h1 {
@@ -1649,16 +1681,11 @@ select {
 
     .connection-status {
         max-width: 220px;
-
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
     }
 
     .icon-button {
         width: 40px;
         height: 40px;
-
         border-radius: 11px;
     }
 
@@ -1679,8 +1706,7 @@ select {
     }
 
     .content {
-        padding:
-            18px 11px;
+        padding: 18px 11px;
     }
 
     .stats-grid {
@@ -1689,9 +1715,7 @@ select {
 
     .stat-card {
         padding: 12px;
-
         gap: 8px;
-
         border-radius: 14px;
     }
 
@@ -1702,9 +1726,7 @@ select {
     .stat-icon {
         width: 36px;
         height: 36px;
-
         border-radius: 10px;
-
         font-size: 18px;
     }
 
@@ -1722,7 +1744,6 @@ select {
 
     .big-action {
         padding: 14px;
-
         border-radius: 14px;
     }
 
@@ -1756,7 +1777,6 @@ select {
 
     .primary-button {
         padding: 0 12px;
-
         font-size: 12px;
     }
 
@@ -1766,30 +1786,25 @@ select {
 
     .product-bottom {
         align-items: flex-start;
-
         flex-direction: column;
     }
 
     .product-actions {
         width: 100%;
-
         justify-content: flex-start;
     }
 
     .sale-search button {
-        padding:
-            0 12px;
+        padding: 0 12px;
     }
 
     .section-card {
         padding: 13px;
-
         border-radius: 15px;
     }
 
     .modal-box {
         padding: 15px;
-
         border-radius: 20px 20px 0 0;
     }
 }
@@ -1847,7 +1862,7 @@ select {
 button:focus-visible,
 input:focus-visible,
 select:focus-visible {
-    outline: 2px solid rgba(37, 99, 235, 0.45);
+    outline: 2px solid rgba(37,99,235,.45);
     outline-offset: 2px;
 }
 
@@ -1862,8 +1877,8 @@ select:focus-visible {
     *::before,
     *::after {
         scroll-behavior: auto !important;
-        animation-duration: 0.01ms !important;
+        animation-duration: .01ms !important;
         animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
+        transition-duration: .01ms !important;
     }
 }
