@@ -1,4 +1,3 @@
-```javascript
 // ============================================================
 // Bizadshop
 // Permanent Folder Connection Edition
@@ -2726,4 +2725,4 @@ if (
 
     initApp();
 }
-```
+
