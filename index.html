@@ -3,10 +3,24 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#111827">
-    <meta name="description" content="Bizadshop - مدیریت فروشگاه">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta
+        name="theme-color"
+        content="#111827"
+    >
+
+    <meta
+        name="description"
+        content="Bizadshop - مدیریت فروشگاه"
+    >
+
     <title>Bizadshop</title>
+
     <link rel="stylesheet" href="style.css">
 </head>
 
@@ -20,13 +34,15 @@
 
         <div class="brand-area">
 
-            <h1 id="storeName">Bizadshop</h1>
+            <h1>Bizadshop</h1>
 
             <span>مدیریت فروشگاه</span>
 
-            <div id="connectionStatus" class="connection-status error">
-                <span class="status-light"></span>
-                <span class="status-text">قطع از دیتابیس</span>
+            <div
+                id="connectionStatus"
+                class="connection-status"
+            >
+                در حال بارگذاری اطلاعات...
             </div>
 
         </div>
@@ -35,9 +51,9 @@
             class="icon-button"
             id="settingsBtn"
             type="button"
-            title="اتصال به دیتابیس"
+            title="اتصال پوشه"
         >
-            🔌
+            📁
         </button>
 
     </header>
@@ -93,33 +109,26 @@
 
         <!-- ================= DASHBOARD ================= -->
 
-        <section id="dashboardPage" class="page active">
+        <section
+            id="dashboardPage"
+            class="page active"
+        >
 
             <div class="page-title">
 
                 <div>
-                    <h2>خانه</h2>
+                    <h2>داشبورد</h2>
                     <p>خلاصه وضعیت فروشگاه</p>
                 </div>
 
-                <button
-                    class="primary-button"
-                    id="quickAddProduct"
-                    type="button"
-                >
-                    + افزودن کالا
-                </button>
-
             </div>
 
-
-            <!-- DASHBOARD STATS -->
 
             <div class="stats-grid">
 
                 <div class="stat-card">
 
-                    <span class="stat-icon blue">📦</span>
+                    <span class="stat-icon">📦</span>
 
                     <div>
                         <small>تعداد کالا</small>
@@ -131,11 +140,11 @@
 
                 <div class="stat-card">
 
-                    <span class="stat-icon green">💰</span>
+                    <span class="stat-icon">📊</span>
 
                     <div>
-                        <small>مجموع فروش امروز</small>
-                        <strong id="todaySalesAmount">0 تومان</strong>
+                        <small>مجموع موجودی</small>
+                        <strong id="totalStock">0</strong>
                     </div>
 
                 </div>
@@ -143,61 +152,61 @@
 
                 <div class="stat-card">
 
-                    <span class="stat-icon purple">🧾</span>
+                    <span class="stat-icon">🧾</span>
 
                     <div>
-                        <small>فاکتورهای امروز</small>
-                        <strong id="todayInvoices">0</strong>
+                        <small>فروش امروز</small>
+                        <strong id="todaySales">0</strong>
                     </div>
 
                 </div>
 
 
-                <button
-                    class="stat-card stat-action"
-                    id="dashboardAddProduct"
-                    type="button"
-                >
+                <div class="stat-card">
 
-                    <span class="stat-icon orange">➕</span>
+                    <span class="stat-icon">💰</span>
 
                     <div>
-                        <small>عملیات سریع</small>
-                        <strong>افزودن کالا</strong>
+                        <small>مبلغ فروش امروز</small>
+                        <strong id="todaySalesAmount">0 تومان</strong>
                     </div>
 
-                </button>
+                </div>
 
             </div>
 
-
-            <!-- QUICK ACTIONS -->
 
             <div class="dashboard-actions">
 
                 <button
                     class="big-action primary"
+                    id="quickAddProduct"
+                    type="button"
+                >
+                    <span>➕</span>
+                    <strong>افزودن کالا</strong>
+                    <small>ثبت کالای جدید</small>
+                </button>
+
+
+                <button
+                    class="big-action"
                     id="quickSale"
                     type="button"
                 >
                     <span>🛒</span>
-                    <strong>ثبت فروش جدید</strong>
-                    <small>شروع یک فروش و صدور فاکتور</small>
+                    <strong>ثبت فروش</strong>
+                    <small>شروع فروش جدید</small>
                 </button>
 
             </div>
 
 
-            <!-- LOW STOCK -->
-
-            <div class="section-card low-stock-section">
+            <div class="section-card">
 
                 <div class="section-header">
 
-                    <div>
-                        <h3>کالاهای نیاز به شارژ</h3>
-                        <small>کالاهایی که موجودی آن‌ها کم یا تمام شده است</small>
-                    </div>
+                    <h3>کالاهای کم‌موجودی</h3>
 
                     <button
                         id="showLowStock"
@@ -209,11 +218,9 @@
                 </div>
 
                 <div id="lowStockList">
-
                     <div class="empty">
                         در حال بارگذاری...
                     </div>
-
                 </div>
 
             </div>
@@ -223,13 +230,16 @@
 
         <!-- ================= PRODUCTS ================= -->
 
-        <section id="productsPage" class="page">
+        <section
+            id="productsPage"
+            class="page"
+        >
 
             <div class="page-title">
 
                 <div>
                     <h2>کالاها</h2>
-                    <p>مدیریت و مشاهده کالاهای فروشگاه</p>
+                    <p>مدیریت کالاهای فروشگاه</p>
                 </div>
 
                 <button
@@ -257,38 +267,6 @@
             </div>
 
 
-            <!-- SORT -->
-
-            <div class="products-toolbar">
-
-                <div class="products-count">
-                    <span>📦</span>
-                    <strong id="productsCountLabel">0 کالا</strong>
-                </div>
-
-                <select id="productSort">
-
-                    <option value="popular">
-                        محبوب‌ترین کالاها
-                    </option>
-
-                    <option value="name">
-                        نام کالا
-                    </option>
-
-                    <option value="stock">
-                        موجودی
-                    </option>
-
-                    <option value="price">
-                        قیمت فروش
-                    </option>
-
-                </select>
-
-            </div>
-
-
             <div id="productsList">
 
                 <div class="empty">
@@ -302,63 +280,48 @@
 
         <!-- ================= SALE ================= -->
 
-        <section id="salePage" class="page">
+        <section
+            id="salePage"
+            class="page"
+        >
 
             <div class="page-title">
 
                 <div>
-                    <h2>ثبت فروش</h2>
-                    <p>انتخاب کالا و ثبت فاکتور</p>
+                    <h2>فروش</h2>
+                    <p>ثبت فروش جدید</p>
                 </div>
 
             </div>
 
 
-            <!-- SALE SEARCH -->
-
             <div class="sale-search">
 
-                <div class="sale-search-input">
-
-                    <span>🔎</span>
-
-                    <input
-                        id="saleSearch"
-                        type="search"
-                        placeholder="نام کالا یا بارکد را وارد کنید..."
-                        autocomplete="off"
-                    >
-
-                </div>
+                <input
+                    id="saleSearch"
+                    type="search"
+                    placeholder="بارکد یا نام کالا..."
+                    autocomplete="off"
+                >
 
                 <button
                     id="scanBarcodeBtn"
                     type="button"
                 >
-                    📷 اسکن بارکد
+                    📷 اسکن
                 </button>
 
             </div>
 
 
-            <!-- SEARCH RESULTS -->
-
-            <div
-                id="saleSearchResults"
-                class="sale-results"
-            ></div>
+            <div id="saleSearchResults"></div>
 
 
-            <!-- CART -->
-
-            <div class="section-card sale-cart-card">
+            <div class="section-card">
 
                 <div class="section-header">
 
-                    <div>
-                        <h3>سبد فروش</h3>
-                        <small id="cartItemCount">0 کالا</small>
-                    </div>
+                    <h3>سبد فروش</h3>
 
                     <button
                         id="clearCartBtn"
@@ -379,20 +342,13 @@
                 </div>
 
 
-                <div class="sale-summary">
+                <div class="sale-total">
 
-                    <div class="summary-row">
-                        <span>تعداد کالا</span>
-                        <strong id="cartQuantity">0</strong>
-                    </div>
+                    <span>مبلغ نهایی</span>
 
-                    <div class="summary-row total-row">
-                        <span>مبلغ نهایی</span>
-
-                        <strong id="cartTotal">
-                            0 تومان
-                        </strong>
-                    </div>
+                    <strong id="cartTotal">
+                        0 تومان
+                    </strong>
 
                 </div>
 
@@ -402,7 +358,7 @@
                     id="checkoutBtn"
                     type="button"
                 >
-                    🧾 ثبت فروش و صدور فاکتور
+                    ثبت فروش
                 </button>
 
             </div>
@@ -412,73 +368,35 @@
 
         <!-- ================= INVENTORY ================= -->
 
-        <section id="inventoryPage" class="page">
+        <section
+            id="inventoryPage"
+            class="page"
+        >
 
             <div class="page-title">
 
                 <div>
                     <h2>انبار</h2>
-                    <p>مدیریت موجودی کالاها</p>
+                    <p>وضعیت موجودی کالاها</p>
                 </div>
 
             </div>
 
-
-            <!-- INVENTORY SUMMARY -->
 
             <div class="inventory-summary">
 
-                <div class="inventory-summary-card">
-
-                    <span>📦</span>
-
-                    <div>
-                        <small>تعداد کالا</small>
-                        <strong id="inventoryProductCount">0</strong>
-                    </div>
-
+                <div>
+                    <small>تعداد کالا</small>
+                    <strong id="inventoryProductCount">0</strong>
                 </div>
 
-
-                <div class="inventory-summary-card">
-
-                    <span>📊</span>
-
-                    <div>
-                        <small>مجموع موجودی</small>
-                        <strong id="inventoryTotalStock">0</strong>
-                    </div>
-
-                </div>
-
-
-                <div class="inventory-summary-card warning-card">
-
-                    <span>⚠️</span>
-
-                    <div>
-                        <small>نیاز به شارژ</small>
-                        <strong id="inventoryLowStockCount">0</strong>
-                    </div>
-
-                </div>
-
-
-                <div class="inventory-summary-card danger-card">
-
-                    <span>🚫</span>
-
-                    <div>
-                        <small>ناموجود</small>
-                        <strong id="inventoryOutOfStockCount">0</strong>
-                    </div>
-
+                <div>
+                    <small>مجموع موجودی</small>
+                    <strong id="inventoryTotalStock">0</strong>
                 </div>
 
             </div>
 
-
-            <!-- INVENTORY SEARCH -->
 
             <div class="search-box">
 
@@ -490,37 +408,6 @@
                     placeholder="جستجوی کالا..."
                     autocomplete="off"
                 >
-
-            </div>
-
-
-            <!-- INVENTORY FILTER -->
-
-            <div class="inventory-toolbar">
-
-                <button
-                    class="inventory-filter active"
-                    data-filter="all"
-                    type="button"
-                >
-                    همه
-                </button>
-
-                <button
-                    class="inventory-filter"
-                    data-filter="low"
-                    type="button"
-                >
-                    کم‌موجود
-                </button>
-
-                <button
-                    class="inventory-filter"
-                    data-filter="empty"
-                    type="button"
-                >
-                    ناموجود
-                </button>
 
             </div>
 
@@ -811,6 +698,7 @@
         id="toast"
         class="toast"
     ></div>
+
 
 </div>
 
