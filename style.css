@@ -23,12 +23,6 @@
     --dark: #111827;
 }
 
-html,
-body {
-    width: 100%;
-    min-height: 100%;
-}
-
 body {
     font-family:
         Tahoma,
@@ -72,7 +66,7 @@ button {
     align-items: center;
     justify-content: space-between;
 
-    padding: 9px 18px;
+    padding: 8px 18px;
 
     position: sticky;
     top: 0;
@@ -88,7 +82,7 @@ button {
     margin-bottom: 2px;
 }
 
-.brand-subtitle {
+.topbar span {
     font-size: 12px;
     opacity: 0.7;
 }
@@ -98,17 +92,22 @@ button {
 
     font-size: 10px;
 
-    color: #93c5fd;
+    color: #d1d5db;
 
     white-space: nowrap;
+
     overflow: hidden;
     text-overflow: ellipsis;
 
-    max-width: 260px;
+    max-width: 280px;
 }
 
 .connection-status.connected {
     color: #86efac;
+}
+
+.connection-status.warning {
+    color: #fbbf24;
 }
 
 .connection-status.error {
@@ -499,6 +498,8 @@ button {
 
 .product-price {
     text-align: left;
+
+    flex-shrink: 0;
 }
 
 .product-price small {
@@ -627,6 +628,10 @@ button {
     justify-content: space-between;
 
     gap: 10px;
+}
+
+.sale-result-info {
+    min-width: 0;
 }
 
 .sale-result-info strong {
@@ -958,15 +963,6 @@ button {
 
 @media (min-width: 700px) {
 
-    .navigation {
-        right: auto;
-        left: auto;
-
-        width: 100%;
-
-        position: fixed;
-    }
-
     .content {
         padding-top: 30px;
     }
@@ -991,6 +987,15 @@ button {
     .content {
         padding-left: 11px;
         padding-right: 11px;
+    }
+
+    .topbar {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    .connection-status {
+        max-width: 220px;
     }
 
     .stats-grid {
@@ -1022,13 +1027,16 @@ button {
         font-size: 12px;
     }
 
-    .connection-status {
-        max-width: 220px;
-    }
-
     .product-bottom {
         align-items: flex-start;
         flex-direction: column;
     }
 
+    .product-actions {
+        width: 100%;
+    }
+
+    .product-actions .small-button {
+        flex: 1;
+    }
 }
