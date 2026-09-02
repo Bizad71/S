@@ -3949,7 +3949,7 @@ const BINARY_EYE_TARGET_KEY =
 
 
 /* ============================================================
-   GET BARCODE INPUT
+   GET INPUT
    ============================================================ */
 
 function getBarcodeInput(target) {
@@ -3981,31 +3981,21 @@ function startBarcodeScanner(
             : "sale";
 
 
-    /*
-     مقصد را ذخیره می‌کنیم تا بعد از
-     برگشت از Binary Eye بدانیم بارکد
-     باید داخل کدام فیلد قرار بگیرد.
-    */
-
     sessionStorage.setItem(
         BINARY_EYE_TARGET_KEY,
         barcodeScannerTarget
     );
 
 
-    /*
-     آدرس برگشت سایت
-    */
-
     const returnURL =
         window.location.origin +
         window.location.pathname +
-        "?binaryeye_result={RESULT}";
+        "?binaryeye_result={RESULT}" +
+        "&binaryeye_target=" +
+        encodeURIComponent(
+            barcodeScannerTarget
+        );
 
-
-    /*
-     Deep Link رسمی Binary Eye
-    */
 
     const binaryEyeURL =
         "binaryeye://scan?ret=" +
@@ -4020,20 +4010,51 @@ function startBarcodeScanner(
     );
 
 
-    /*
-     باز کردن برنامه Binary Eye
-    */
-
     window.location.href =
         binaryEyeURL;
 }
 
 
 /* ============================================================
-   HANDLE RESULT FROM BINARY EYE
+   FIND PRODUCT BY BARCODE
    ============================================================ */
 
-function handleBinaryEyeResult() {
+function findProductByBarcode(
+    barcode
+) {
+
+    const cleanBarcode =
+        String(
+            barcode
+        ).trim();
+
+
+    if (
+        !cleanBarcode ||
+        !database ||
+        !Array.isArray(
+            database.products
+        )
+    ) {
+
+        return null;
+    }
+
+
+    return database.products.find(
+        product =>
+            String(
+                product.barcode ?? ""
+            ).trim() === cleanBarcode
+    ) || null;
+}
+
+
+/* ============================================================
+   HANDLE BINARY EYE RESULT
+   ============================================================ */
+
+async function handleBinaryEyeResult() {
 
     const url =
         new URL(
@@ -4047,13 +4068,7 @@ function handleBinaryEyeResult() {
         );
 
 
-    /*
-     اگر از Binary Eye برنگشته‌ایم
-    */
-
-    if (
-        barcode === null
-    ) {
+    if (barcode === null) {
 
         return;
     }
@@ -4072,14 +4087,27 @@ function handleBinaryEyeResult() {
 
 
     /*
-     تشخیص اینکه اسکن برای فروش بوده
-     یا ثبت کالا
+     مقصد اسکن:
+     product = افزودن کالا
+     sale    = فروش
     */
 
-    const target =
+    const urlTarget =
+        url.searchParams.get(
+            "binaryeye_target"
+        );
+
+
+    const savedTarget =
         sessionStorage.getItem(
             BINARY_EYE_TARGET_KEY
-        ) || "sale";
+        );
+
+
+    const target =
+        urlTarget ||
+        savedTarget ||
+        "sale";
 
 
     sessionStorage.removeItem(
@@ -4093,27 +4121,83 @@ function handleBinaryEyeResult() {
             : "sale";
 
 
-    /*
-     پیدا کردن فیلد مقصد
-    */
+    /* ========================================================
+       افزودن کالا
+       فقط بارکد را داخل فیلد بارکد قرار بده
+       ======================================================== */
 
-    const input =
-        getBarcodeInput(
-            barcodeScannerTarget
+    if (
+        barcodeScannerTarget ===
+        "product"
+    ) {
+
+        const input =
+            document.getElementById(
+                "productBarcode"
+            );
+
+
+        if (input) {
+
+            input.value =
+                cleanBarcode;
+
+
+            input.dispatchEvent(
+                new Event(
+                    "input",
+                    {
+                        bubbles: true
+                    }
+                )
+            );
+
+
+            input.dispatchEvent(
+                new Event(
+                    "change",
+                    {
+                        bubbles: true
+                    }
+                )
+            );
+
+
+            input.focus();
+        }
+
+
+        removeBinaryEyeResultFromURL();
+
+
+        showToast(
+            "بارکد وارد شد."
         );
 
 
-    if (input) {
+        return;
+    }
 
-        input.value =
+
+    /* ========================================================
+       فروش
+       بارکد را داخل جستجوی فروش قرار بده
+       سپس بین کالاهای موجود جستجو کن
+       ======================================================== */
+
+    const saleInput =
+        document.getElementById(
+            "saleSearch"
+        );
+
+
+    if (saleInput) {
+
+        saleInput.value =
             cleanBarcode;
 
 
-        /*
-         اجرای رفتار عادی input
-        */
-
-        input.dispatchEvent(
+        saleInput.dispatchEvent(
             new Event(
                 "input",
                 {
@@ -4121,19 +4205,75 @@ function handleBinaryEyeResult() {
                 }
             )
         );
-
-
-        input.focus();
     }
 
 
     /*
-     پاک کردن نتیجه از URL
-     تا با Refresh دوباره اجرا نشود.
+     پیدا کردن کالا در محصولات موجود
     */
+
+    const product =
+        findProductByBarcode(
+            cleanBarcode
+        );
+
+
+    if (product) {
+
+        /*
+         اگر تابع جستجوی فروش موجود است،
+         همان تابع فعلی سایت اجرا شود.
+        */
+
+        try {
+
+            await renderSaleSearch(
+                cleanBarcode
+            );
+
+        } catch (error) {
+
+            console.error(
+                "renderSaleSearch:",
+                error
+            );
+        }
+
+
+        showToast(
+            "کالا شناسایی شد."
+        );
+
+    } else {
+
+        showToast(
+            "کالا با این بارکد یافت نشد."
+        );
+    }
+
+
+    removeBinaryEyeResultFromURL();
+}
+
+
+/* ============================================================
+   REMOVE RESULT FROM URL
+   ============================================================ */
+
+function removeBinaryEyeResultFromURL() {
+
+    const url =
+        new URL(
+            window.location.href
+        );
+
 
     url.searchParams.delete(
         "binaryeye_result"
+    );
+
+    url.searchParams.delete(
+        "binaryeye_target"
     );
 
 
@@ -4153,17 +4293,11 @@ function handleBinaryEyeResult() {
         document.title,
         cleanURL
     );
-
-
-    showToast(
-        "بارکد شناسایی شد: " +
-        cleanBarcode
-    );
 }
 
 
 /* ============================================================
-   SALES SCAN BUTTON
+   SALE SCAN BUTTON
    ============================================================ */
 
 document
@@ -4232,8 +4366,7 @@ if (
 
     handleBinaryEyeResult();
 
-}
-/* ============================================================
+}/* ============================================================
    REFRESH ALL
    ============================================================ */
 
