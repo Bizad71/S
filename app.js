@@ -2,7 +2,7 @@
    Bizadshop
    Persistent Local + Folder Storage Edition
 
-   معماری:
+   معماری جدید:
 
    1. IndexedDB = اطلاعات اصلی برنامه
    2. bizadshop-data.json = فایل پشتیبان/همگام‌سازی پوشه
@@ -13,7 +13,6 @@
    6. کاربر می‌تواند کالا ثبت کند حتی اگر پوشه فعلاً در دسترس
       نباشد.
    7. هنگام اتصال دوباره پوشه، فایل موجود خوانده می‌شود.
-   8. Barcode Scanner = Binary Eye
    ============================================================ */
 
 
@@ -31,12 +30,6 @@ const HANDLE_STORE = "handles";
 
 const DATA_KEY = "main-data";
 const HANDLE_KEY = "main-folder";
-
-const BINARY_EYE_TARGET_KEY =
-    "bizadshop_binaryeye_target";
-
-const BINARY_EYE_RESULT_PARAM =
-    "binaryeye_result";
 
 let folderHandle = null;
 
@@ -912,6 +905,12 @@ async function connectSelectedFolder(
 
         } catch (error) {
 
+            /*
+             فایل وجود ندارد.
+             در این حالت اطلاعات فعلی برنامه
+             را داخل فایل ایجاد می‌کنیم.
+            */
+
             if (
                 error.name ===
                 "NotFoundError"
@@ -925,6 +924,11 @@ async function connectSelectedFolder(
             }
         }
 
+
+        /*
+         اگر فایل پوشه اطلاعات دارد،
+         همان اطلاعات قبلی فروشگاه را برمی‌گردانیم.
+        */
 
         if (
             folderData &&
@@ -940,6 +944,11 @@ async function connectSelectedFolder(
             await saveLocalDatabase();
 
         } else {
+
+            /*
+             اگر فایل خالی/جدید است،
+             اطلاعات فعلی IndexedDB را داخل آن می‌نویسیم.
+            */
 
             await writeDataToFolder(
                 database
@@ -986,6 +995,7 @@ async function connectSelectedFolder(
 
 /* ============================================================
    CHOOSE FOLDER
+   این تابع فقط با کلیک کاربر اجرا می‌شود.
    ============================================================ */
 
 async function chooseFolder() {
@@ -1014,6 +1024,11 @@ async function chooseFolder() {
                 mode: "readwrite"
             });
 
+
+        /*
+         این handle ذخیره می‌شود تا در Refresh
+         دوباره بتوانیم آن را پیدا کنیم.
+        */
 
         await saveFolderHandle(
             handle
@@ -1067,6 +1082,9 @@ async function chooseFolder() {
 
 /* ============================================================
    AUTO CONNECT
+   مهم:
+   این تابع هرگز requestPermission را خودکار اجرا نمی‌کند.
+   بنابراین Refresh روی گوشی گیر نمی‌کند.
    ============================================================ */
 
 async function tryAutoConnect() {
@@ -1102,6 +1120,11 @@ async function tryAutoConnect() {
             );
 
 
+        /*
+         اگر مرورگر مجوز را حفظ کرده باشد،
+         بدون هیچ دخالت کاربر وصل می‌شویم.
+        */
+
         if (
             permission === "granted"
         ) {
@@ -1130,6 +1153,11 @@ async function tryAutoConnect() {
                     await saveLocalDatabase();
 
                 } else {
+
+                    /*
+                     فایل وجود دارد ولی خالی است.
+                     اطلاعات IndexedDB را از بین نمی‌بریم.
+                    */
 
                     await writeDataToFolder(
                         database
@@ -1170,6 +1198,13 @@ async function tryAutoConnect() {
             }
         }
 
+
+        /*
+         permission = prompt یا denied
+
+         اینجا عمداً requestPermission نمی‌زنیم.
+         چون Refresh نباید پنجره اجازه باز کند.
+        */
 
         folderConnected = false;
 
@@ -1319,14 +1354,26 @@ async function reconnectExistingFolder() {
 
 /* ============================================================
    SAVE EVERYTHING
+   اول IndexedDB
+   بعد اگر پوشه در دسترس بود JSON
    ============================================================ */
 
 async function saveDatabase() {
 
     try {
 
+        /*
+         مهم:
+         همیشه اول اطلاعات را داخل IndexedDB ذخیره می‌کنیم.
+         */
+
         await saveLocalDatabase();
 
+
+        /*
+         سپس اگر پوشه قابل نوشتن است،
+         همان اطلاعات را در فایل JSON ذخیره می‌کنیم.
+        */
 
         if (
             folderHandle &&
@@ -1865,1324 +1912,4 @@ async function editProduct(
 
 
     openModal(
-        "productModal"
-    );
-}
-
-
-/* ============================================================
-   DELETE PRODUCT
-   ============================================================ */
-
-async function deleteProduct(
-    productId
-) {
-
-    const product =
-        await getProduct(
-            productId
-        );
-
-
-    if (!product) return;
-
-
-    if (
-        !confirm(
-            `کالای «${product.name}» حذف شود؟`
-        )
-    ) {
-
-        return;
-    }
-
-
-    database.products =
-        database.products.filter(
-            item =>
-                item.id !== productId
-        );
-
-
-    delete database.inventory[
-        productId
-    ];
-
-
-    cart =
-        cart.filter(
-            item =>
-                item.productId !==
-                productId
-        );
-
-
-    await saveDatabase();
-
-
-    await refreshAll();
-
-
-    showToast(
-        "کالا حذف شد."
-    );
-}
-
-
-/* ============================================================
-   PRODUCTS LIST
-   ============================================================ */
-
-async function renderProducts(
-    search = ""
-) {
-
-    const container =
-        document.getElementById(
-            "productsList"
-        );
-
-
-    if (!container) return;
-
-
-    let products =
-        await getProducts();
-
-
-    const text =
-        search
-            .trim()
-            .toLowerCase();
-
-
-    if (text) {
-
-        products =
-            products.filter(
-                product =>
-                    String(
-                        product.name || ""
-                    )
-                    .toLowerCase()
-                    .includes(text)
-                    ||
-                    String(
-                        product.barcode || ""
-                    )
-                    .toLowerCase()
-                    .includes(text)
-                    ||
-                    String(
-                        product.category || ""
-                    )
-                    .toLowerCase()
-                    .includes(text)
-            );
-    }
-
-
-    products =
-        [...products].sort(
-            (a, b) =>
-                String(
-                    b.createdAt || ""
-                ).localeCompare(
-                    String(
-                        a.createdAt || ""
-                    )
-                )
-        );
-
-
-    if (!products.length) {
-
-        container.innerHTML =
-            `<div class="empty">
-                کالایی پیدا نشد.
-            </div>`;
-
-        return;
-    }
-
-
-    let html = "";
-
-
-    for (
-        const product of products
-    ) {
-
-        const quantity =
-            await getQuantity(
-                product.id
-            );
-
-
-        let stockClass =
-            "good";
-
-
-        if (
-            quantity <= 0
-        ) {
-
-            stockClass =
-                "empty";
-
-        } else if (
-            quantity <= 5
-        ) {
-
-            stockClass =
-                "low";
-        }
-
-
-        html += `
-
-        <div class="product-card">
-
-            <div class="product-main">
-
-                <div class="product-info">
-
-                    <div class="product-name">
-                        ${escapeHTML(
-                            product.name
-                        )}
-                    </div>
-
-                    <div class="product-barcode">
-                        ${escapeHTML(
-                            product.barcode
-                        )}
-                    </div>
-
-                </div>
-
-
-                <div class="product-price">
-
-                    <small>
-                        قیمت فروش
-                    </small>
-
-                    <strong>
-                        ${formatMoney(
-                            product.salePrice
-                        )}
-                    </strong>
-
-                </div>
-
-            </div>
-
-
-            <div class="product-bottom">
-
-                <div class="stock ${stockClass}">
-
-                    موجودی:
-                    ${quantity.toLocaleString(
-                        "fa-IR"
-                    )}
-
-                    ${escapeHTML(
-                        product.unit ||
-                        "عدد"
-                    )}
-
-                </div>
-
-
-                <div class="product-actions">
-
-                    <button
-                        class="small-button"
-                        onclick="openStockModal('${product.id}')"
-                        type="button"
-                    >
-                        موجودی
-                    </button>
-
-                    <button
-                        class="small-button"
-                        onclick="editProduct('${product.id}')"
-                        type="button"
-                    >
-                        ویرایش
-                    </button>
-
-                    <button
-                        class="small-button danger"
-                        onclick="deleteProduct('${product.id}')"
-                        type="button"
-                    >
-                        حذف
-                    </button>
-
-                </div>
-
-            </div>
-
-        </div>
-        `;
-    }
-
-
-    container.innerHTML =
-        html;
-}
-
-
-/* ============================================================
-   INVENTORY LIST
-   ============================================================ */
-
-async function renderInventory(
-    search = ""
-) {
-
-    const container =
-        document.getElementById(
-            "inventoryList"
-        );
-
-
-    if (!container) return;
-
-
-    let products =
-        await getProducts();
-
-
-    const text =
-        search
-            .trim()
-            .toLowerCase();
-
-
-    if (text) {
-
-        products =
-            products.filter(
-                product =>
-                    String(
-                        product.name || ""
-                    )
-                    .toLowerCase()
-                    .includes(text)
-                    ||
-                    String(
-                        product.barcode || ""
-                    )
-                    .toLowerCase()
-                    .includes(text)
-            );
-    }
-
-
-    if (!products.length) {
-
-        container.innerHTML =
-            `<div class="empty">
-                موجودی خالی است.
-            </div>`;
-
-        return;
-    }
-
-
-    let html = "";
-
-
-    for (
-        const product of products
-    ) {
-
-        const quantity =
-            await getQuantity(
-                product.id
-            );
-
-
-        let stockClass =
-            "good";
-
-
-        if (
-            quantity <= 0
-        ) {
-
-            stockClass =
-                "empty";
-
-        } else if (
-            quantity <= 5
-        ) {
-
-            stockClass =
-                "low";
-        }
-
-
-        html += `
-
-        <div class="product-card">
-
-            <div class="product-main">
-
-                <div class="product-info">
-
-                    <div class="product-name">
-                        ${escapeHTML(
-                            product.name
-                        )}
-                    </div>
-
-                    <div class="product-barcode">
-                        ${escapeHTML(
-                            product.barcode
-                        )}
-                    </div>
-
-                </div>
-
-
-                <div class="stock ${stockClass}">
-
-                    ${quantity.toLocaleString(
-                        "fa-IR"
-                    )}
-
-                    ${escapeHTML(
-                        product.unit ||
-                        "عدد"
-                    )}
-
-                </div>
-
-            </div>
-
-
-            <div class="product-bottom">
-
-                <span>
-                    قیمت فروش:
-                    ${formatMoney(
-                        product.salePrice
-                    )}
-                </span>
-
-                <button
-                    class="small-button"
-                    onclick="openStockModal('${product.id}')"
-                    type="button"
-                >
-                    تغییر موجودی
-                </button>
-
-            </div>
-
-        </div>
-        `;
-    }
-
-
-    container.innerHTML =
-        html;
-}
-
-
-/* ============================================================
-   STOCK MODAL
-   ============================================================ */
-
-async function openStockModal(
-    productId
-) {
-
-    const product =
-        await getProduct(
-            productId
-        );
-
-
-    if (!product) return;
-
-
-    const quantity =
-        await getQuantity(
-            productId
-        );
-
-
-    document
-        .getElementById(
-            "stockProductId"
-        )
-        .value =
-            productId;
-
-
-    document
-        .getElementById(
-            "stockProductName"
-        )
-        .textContent =
-            `${product.name} — موجودی فعلی: ${quantity}`;
-
-
-    document
-        .getElementById(
-            "stockAmount"
-        )
-        .value =
-            "";
-
-
-    document
-        .getElementById(
-            "stockAction"
-        )
-        .value =
-            "increase";
-
-
-    openModal(
-        "stockModal"
-    );
-}
-
-
-/* ============================================================
-   STOCK FORM
-   ============================================================ */
-
-document
-    .getElementById("stockForm")
-    .addEventListener(
-        "submit",
-        async function (event) {
-
-            event.preventDefault();
-
-
-            try {
-
-                const productId =
-                    document
-                        .getElementById(
-                            "stockProductId"
-                        )
-                        .value;
-
-
-                const action =
-                    document
-                        .getElementById(
-                            "stockAction"
-                        )
-                        .value;
-
-
-                const amount =
-                    Number(
-                        document
-                            .getElementById(
-                                "stockAmount"
-                            )
-                            .value
-                    );
-
-
-                if (
-                    !Number.isFinite(amount) ||
-                    amount < 0
-                ) {
-
-                    throw new Error(
-                        "مقدار نامعتبر است."
-                    );
-                }
-
-
-                const current =
-                    await getQuantity(
-                        productId
-                    );
-
-
-                let newQuantity;
-
-
-                if (
-                    action === "increase"
-                ) {
-
-                    newQuantity =
-                        current + amount;
-
-                } else if (
-                    action === "decrease"
-                ) {
-
-                    if (
-                        amount > current
-                    ) {
-
-                        throw new Error(
-                            "موجودی کافی نیست."
-                        );
-                    }
-
-
-                    newQuantity =
-                        current - amount;
-
-                } else {
-
-                    newQuantity =
-                        amount;
-                }
-
-
-                await setQuantity(
-                    productId,
-                    newQuantity
-                );
-
-
-                const saved =
-                    await saveDatabase();
-
-
-                if (!saved) {
-
-                    throw new Error(
-                        "ذخیره موجودی ناموفق بود."
-                    );
-                }
-
-
-                closeModal(
-                    "stockModal"
-                );
-
-
-                await refreshAll();
-
-
-                showToast(
-                    "موجودی ذخیره شد."
-                );
-
-            } catch (error) {
-
-                console.error(error);
-
-                showToast(
-                    error.message
-                );
-            }
-
-        }
-    );
-
-
-/* ============================================================
-   SALES / CART
-   ============================================================ */
-
-async function addToCart(
-    productId
-) {
-
-    const product =
-        await getProduct(
-            productId
-        );
-
-
-    if (!product) return;
-
-
-    const quantity =
-        await getQuantity(
-            productId
-        );
-
-
-    if (
-        quantity <= 0
-    ) {
-
-        showToast(
-            "این کالا موجود نیست."
-        );
-
-        return;
-    }
-
-
-    const existing =
-        cart.find(
-            item =>
-                item.productId ===
-                productId
-        );
-
-
-    if (existing) {
-
-        if (
-            existing.quantity >=
-            quantity
-        ) {
-
-            showToast(
-                "موجودی کافی نیست."
-            );
-
-            return;
-        }
-
-
-        existing.quantity++;
-
-    } else {
-
-        cart.push({
-
-            productId:
-                productId,
-
-            quantity:
-                1
-
-        });
-    }
-
-
-    await renderCart();
-}
-
-
-function removeFromCart(
-    productId
-) {
-
-    cart =
-        cart.filter(
-            item =>
-                item.productId !==
-                productId
-        );
-
-
-    renderCart();
-}
-
-
-async function changeCartQuantity(
-    productId,
-    change
-) {
-
-    const item =
-        cart.find(
-            item =>
-                item.productId ===
-                productId
-        );
-
-
-    if (!item) return;
-
-
-    const stock =
-        await getQuantity(
-            productId
-        );
-
-
-    const newQuantity =
-        item.quantity +
-        change;
-
-
-    if (
-        newQuantity <= 0
-    ) {
-
-        removeFromCart(
-            productId
-        );
-
-        return;
-    }
-
-
-    if (
-        newQuantity >
-        stock
-    ) {
-
-        showToast(
-            "موجودی کافی نیست."
-        );
-
-        return;
-    }
-
-
-    item.quantity =
-        newQuantity;
-
-
-    await renderCart();
-}
-
-
-/* ============================================================
-   CART
-   ============================================================ */
-
-async function renderCart() {
-
-    const container =
-        document.getElementById(
-            "cartList"
-        );
-
-
-    if (!container) return;
-
-
-    if (!cart.length) {
-
-        container.innerHTML =
-            `<div class="empty">
-                سبد فروش خالی است.
-            </div>`;
-
-
-        document
-            .getElementById(
-                "cartTotal"
-            )
-            .textContent =
-                "0 تومان";
-
-
-        return;
-    }
-
-
-    let html = "";
-
-    let total = 0;
-
-
-    for (
-        const item of cart
-    ) {
-
-        const product =
-            await getProduct(
-                item.productId
-            );
-
-
-        if (!product) continue;
-
-
-        const itemTotal =
-            Number(
-                product.salePrice
-            ) *
-            item.quantity;
-
-
-        total +=
-            itemTotal;
-
-
-        html += `
-
-        <div class="cart-item">
-
-            <div class="cart-info">
-
-                <strong>
-                    ${escapeHTML(
-                        product.name
-                    )}
-                </strong>
-
-                <small>
-                    ${formatMoney(
-                        product.salePrice
-                    )}
-
-                    ×
-
-                    ${item.quantity.toLocaleString(
-                        "fa-IR"
-                    )}
-
-                </small>
-
-            </div>
-
-
-            <div class="cart-controls">
-
-                <button
-                    class="quantity-button"
-                    onclick="changeCartQuantity('${product.id}', 1)"
-                    type="button"
-                >
-                    +
-                </button>
-
-                <strong>
-                    ${item.quantity.toLocaleString(
-                        "fa-IR"
-                    )}
-                </strong>
-
-                <button
-                    class="quantity-button"
-                    onclick="changeCartQuantity('${product.id}', -1)"
-                    type="button"
-                >
-                    −
-                </button>
-
-            </div>
-
-        </div>
-        `;
-    }
-
-
-    container.innerHTML =
-        html;
-
-
-    document
-        .getElementById(
-            "cartTotal"
-        )
-        .textContent =
-            formatMoney(total);
-}
-
-
-/* ============================================================
-   CHECKOUT
-   ============================================================ */
-
-async function checkout() {
-
-    if (!cart.length) {
-
-        showToast(
-            "سبد فروش خالی است."
-        );
-
-        return;
-    }
-
-
-    const saleId =
-        generateId(
-            "sale"
-        );
-
-
-    const createdAt =
-        nowISO();
-
-
-    let total = 0;
-
-    const saleItems = [];
-
-
-    for (
-        const item of cart
-    ) {
-
-        const product =
-            await getProduct(
-                item.productId
-            );
-
-
-        if (!product) {
-
-            throw new Error(
-                "یکی از کالاها پیدا نشد."
-            );
-        }
-
-
-        const stock =
-            await getQuantity(
-                item.productId
-            );
-
-
-        if (
-            item.quantity >
-            stock
-        ) {
-
-            throw new Error(
-                `موجودی «${product.name}» کافی نیست.`
-            );
-        }
-
-
-        const itemTotal =
-            Number(
-                product.salePrice
-            ) *
-            item.quantity;
-
-
-        total +=
-            itemTotal;
-
-
-        saleItems.push({
-
-            id:
-                generateId(
-                    "saleitem"
-                ),
-
-            saleId:
-                saleId,
-
-            productId:
-                product.id,
-
-            quantity:
-                item.quantity,
-
-            unitPrice:
-                Number(
-                    product.salePrice
-                ),
-
-            totalPrice:
-                itemTotal
-
-        });
-    }
-
-
-    database.sales.push({
-
-        id:
-            saleId,
-
-        totalAmount:
-            total,
-
-        discount:
-            0,
-
-        finalAmount:
-            total,
-
-        createdAt:
-            createdAt
-
-    });
-
-
-    for (
-        const item of saleItems
-    ) {
-
-        database.sale_items.push(
-            item
-        );
-
-
-        const current =
-            await getQuantity(
-                item.productId
-            );
-
-
-        await setQuantity(
-            item.productId,
-            current -
-            item.quantity
-        );
-    }
-
-
-    const saved =
-        await saveDatabase();
-
-
-    if (!saved) {
-
-        throw new Error(
-            "ثبت فروش ناموفق بود."
-        );
-    }
-
-
-    cart = [];
-
-
-    await refreshAll();
-
-
-    showToast(
-        "فروش با موفقیت ذخیره شد."
-    );
-}
-
-
-/* ============================================================
-   TODAY SALES
-   ============================================================ */
-
-function isToday(
-    isoDate
-) {
-
-    const date =
-        new Date(
-            isoDate
-        );
-
-
-    const now =
-        new Date();
-
-
-    return (
-        date.getFullYear() ===
-            now.getFullYear()
-        &&
-        date.getMonth() ===
-            now.getMonth()
-        &&
-        date.getDate() ===
-            now.getDate()
-    );
-}
-
-
-async function getTodaySales() {
-
-    return database.sales.filter(
-        sale =>
-            isToday(
-                sale.createdAt
-            )
-    );
-}
-
-
-/* ============================================================
-   DASHBOARD
-   ============================================================ */
-
-async function renderDashboard() {
-
-    const products =
-        await getProducts();
-
-
-    let totalStock = 0;
-
-
-    for (
-        const product of products
-    ) {
-
-        totalStock +=
-            await getQuantity(
-                product.id
-            );
-    }
-
-
-    const sales =
-        await getTodaySales();
-
-
-    const salesAmount =
-        sales.reduce(
-            (
-                sum,
-                sale
-            ) =>
-                sum +
-                (
-                    Number(
-                        sale.finalAmount
-                    ) || 0
-                ),
-            0
-        );
-
-
-    document
-        .getElementById(
-            "totalProducts"
-        )
-        .textContent =
-            products.length.toLocaleString(
-                "fa-IR"
-            );
-
-
-    document
-        .getElementById(
-            "totalStock"
-        )
-        .textContent =
-            totalStock.toLocaleString(
-                "fa-IR"
-            );
-
-
-    document
-        .getElementById(
-            "todaySales"
-        )
-        .textContent =
-            sales.length.toLocaleString(
-                "fa-IR"
-            );
-
-
-    document
-        .getElementById(
-            "todaySalesAmount"
-        )
-        .textContent =
-            formatMoney(
-                salesAmount
-            );
-
-
-    await renderLowStock();
-}
-
-
-/* ============================================================
-   LOW STOCK
-   ============================================================ */
-
-async function renderLowStock() {
-
-    const container =
-        document.getElementById(
-            "lowStockList"
-        );
-
-
-    if (!container) return;
-
-
-    const products =
-        await getProducts();
-
-
-    const lowStock = [];
-
-
-    for (
-        const product of products
-    ) {
-
-        const quantity =
-            await getQuantity(
-                product.id
-            );
-
-
-        if (
-            quantity <= 5
-        ) {
-
-            lowStock.push({
-
-                product:
-                    product,
-
-                quantity:
-                    quantity
-
-            });
-        }
-    }
-
-
-    if (!lowStock.length) {
-
-        container.innerHTML =
-            `<div class="empty">
-                همه کالاها موجودی مناسبی دارند.
-            </div>`;
-
-        return;
-    }
-
-
-    let html = "";
-
-
-    for (
-        const item of lowStock.slice(
-            0,
-            5
-        )
-    ) {
-
-        html += `
-
-        <div class="product-card">
-
-            <div class="product-main">
-
-                <div class="product-info">
-
-                    <div class="product-name">
-                        ${escapeHTML(
-                            item.product.name
-                        )}
-                    </div>
-
-                    <div class="product-barcode">
-                        ${escapeHTML(
-                            item.product.barcode
-                        )}
-                    </div>
-
-                </div>
-
-
-                <div class="stock ${
-                    item.quantity <= 0
-                        ? "empty"
-                        : "low"
-                }">
-
-                    موجودی:
-                    ${item.quantity.toLocaleString(
-                        "fa-IR"
-                   
+        "product
