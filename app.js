@@ -905,12 +905,6 @@ async function connectSelectedFolder(
 
         } catch (error) {
 
-            /*
-             فایل وجود ندارد.
-             در این حالت اطلاعات فعلی برنامه
-             را داخل فایل ایجاد می‌کنیم.
-            */
-
             if (
                 error.name ===
                 "NotFoundError"
@@ -924,11 +918,6 @@ async function connectSelectedFolder(
             }
         }
 
-
-        /*
-         اگر فایل پوشه اطلاعات دارد،
-         همان اطلاعات قبلی فروشگاه را برمی‌گردانیم.
-        */
 
         if (
             folderData &&
@@ -944,11 +933,6 @@ async function connectSelectedFolder(
             await saveLocalDatabase();
 
         } else {
-
-            /*
-             اگر فایل خالی/جدید است،
-             اطلاعات فعلی IndexedDB را داخل آن می‌نویسیم.
-            */
 
             await writeDataToFolder(
                 database
@@ -995,7 +979,6 @@ async function connectSelectedFolder(
 
 /* ============================================================
    CHOOSE FOLDER
-   این تابع فقط با کلیک کاربر اجرا می‌شود.
    ============================================================ */
 
 async function chooseFolder() {
@@ -1024,11 +1007,6 @@ async function chooseFolder() {
                 mode: "readwrite"
             });
 
-
-        /*
-         این handle ذخیره می‌شود تا در Refresh
-         دوباره بتوانیم آن را پیدا کنیم.
-        */
 
         await saveFolderHandle(
             handle
@@ -1082,9 +1060,6 @@ async function chooseFolder() {
 
 /* ============================================================
    AUTO CONNECT
-   مهم:
-   این تابع هرگز requestPermission را خودکار اجرا نمی‌کند.
-   بنابراین Refresh روی گوشی گیر نمی‌کند.
    ============================================================ */
 
 async function tryAutoConnect() {
@@ -1120,11 +1095,6 @@ async function tryAutoConnect() {
             );
 
 
-        /*
-         اگر مرورگر مجوز را حفظ کرده باشد،
-         بدون هیچ دخالت کاربر وصل می‌شویم.
-        */
-
         if (
             permission === "granted"
         ) {
@@ -1153,11 +1123,6 @@ async function tryAutoConnect() {
                     await saveLocalDatabase();
 
                 } else {
-
-                    /*
-                     فایل وجود دارد ولی خالی است.
-                     اطلاعات IndexedDB را از بین نمی‌بریم.
-                    */
 
                     await writeDataToFolder(
                         database
@@ -1198,13 +1163,6 @@ async function tryAutoConnect() {
             }
         }
 
-
-        /*
-         permission = prompt یا denied
-
-         اینجا عمداً requestPermission نمی‌زنیم.
-         چون Refresh نباید پنجره اجازه باز کند.
-        */
 
         folderConnected = false;
 
@@ -1354,26 +1312,14 @@ async function reconnectExistingFolder() {
 
 /* ============================================================
    SAVE EVERYTHING
-   اول IndexedDB
-   بعد اگر پوشه در دسترس بود JSON
    ============================================================ */
 
 async function saveDatabase() {
 
     try {
 
-        /*
-         مهم:
-         همیشه اول اطلاعات را داخل IndexedDB ذخیره می‌کنیم.
-         */
-
         await saveLocalDatabase();
 
-
-        /*
-         سپس اگر پوشه قابل نوشتن است،
-         همان اطلاعات را در فایل JSON ذخیره می‌کنیم.
-        */
 
         if (
             folderHandle &&
@@ -3694,13 +3640,6 @@ document
         "click",
         async () => {
 
-            /*
-             اگر handle قبلی داریم،
-             اول تلاش می‌کنیم همان پوشه را دوباره
-             با اجازه‌ای که فقط با کلیک کاربر درخواست
-             می‌شود فعال کنیم.
-            */
-
             if (folderHandle) {
 
                 const reconnected =
@@ -3713,11 +3652,6 @@ document
                 }
             }
 
-
-            /*
-             اگر handle قبلی قابل استفاده نبود،
-             انتخاب پوشه جدید.
-            */
 
             await chooseFolder();
 
@@ -4082,6 +4016,8 @@ async function handleBinaryEyeResult() {
 
     if (!cleanBarcode) {
 
+        removeBinaryEyeResultFromURL();
+
         return;
     }
 
@@ -4123,13 +4059,52 @@ async function handleBinaryEyeResult() {
 
     /* ========================================================
        افزودن کالا
-       فقط بارکد را داخل فیلد بارکد قرار بده
+       
+       نکته مهم:
+       وقتی از Binary Eye برمی‌گردیم، صفحه سایت دوباره لود شده
+       و پاپ‌آپ قبلی دیگر باز نیست.
+
+       بنابراین:
+       1. پاپ‌آپ افزودن کالا را دوباره باز می‌کنیم.
+       2. بارکد را داخل فیلد بارکد قرار می‌دهیم.
+       3. عنوان را روی افزودن کالا قرار می‌دهیم.
+       4. بعد از قرار دادن بارکد، فوکوس را روی نام کالا می‌بریم.
        ======================================================== */
 
     if (
         barcodeScannerTarget ===
         "product"
     ) {
+
+        /*
+         عنوان پاپ‌آپ را روی افزودن کالا قرار بده
+         */
+
+        const productModalTitle =
+            document.getElementById(
+                "productModalTitle"
+            );
+
+
+        if (productModalTitle) {
+
+            productModalTitle.textContent =
+                "افزودن کالا";
+        }
+
+
+        /*
+         پاپ‌آپ را دوباره باز کن
+         */
+
+        openModal(
+            "productModal"
+        );
+
+
+        /*
+         بارکد را داخل فیلد بارکد قرار بده
+         */
 
         const input =
             document.getElementById(
@@ -4161,11 +4136,38 @@ async function handleBinaryEyeResult() {
                     }
                 )
             );
-
-
-            input.focus();
         }
 
+
+        /*
+         بعد از باز شدن پاپ‌آپ،
+         فوکوس روی نام کالا قرار بگیرد.
+         */
+
+        setTimeout(
+            () => {
+
+                const nameInput =
+                    document.getElementById(
+                        "productName"
+                    );
+
+
+                if (nameInput) {
+
+                    nameInput.focus();
+
+                }
+
+            },
+            150
+        );
+
+
+        /*
+         نتیجه را از URL حذف کن
+         تا با Refresh دوباره اسکن نشود.
+         */
 
         removeBinaryEyeResultFromURL();
 
@@ -4220,11 +4222,6 @@ async function handleBinaryEyeResult() {
 
     if (product) {
 
-        /*
-         اگر تابع جستجوی فروش موجود است،
-         همان تابع فعلی سایت اجرا شود.
-        */
-
         try {
 
             await renderSaleSearch(
@@ -4271,6 +4268,7 @@ function removeBinaryEyeResultFromURL() {
     url.searchParams.delete(
         "binaryeye_result"
     );
+
 
     url.searchParams.delete(
         "binaryeye_target"
@@ -4366,7 +4364,10 @@ if (
 
     handleBinaryEyeResult();
 
-}/* ============================================================
+}
+
+
+/* ============================================================
    REFRESH ALL
    ============================================================ */
 
@@ -4420,7 +4421,6 @@ async function initApp() {
         /*
          مرحله اول:
          اطلاعات محلی را سریع بارگذاری می‌کنیم.
-         بنابراین صفحه هیچ‌وقت با دیتابیس صفر بالا نمی‌آید.
         */
 
         await loadLocalDatabase();
@@ -4438,13 +4438,6 @@ async function initApp() {
         /*
          مرحله دوم:
          تلاش برای اتصال خودکار به پوشه.
-
-         اگر مرورگر مجوز را حفظ کرده باشد:
-         بدون هیچ کلیک کاربر وصل می‌شود.
-
-         اگر مجوز را حفظ نکرده باشد:
-         هیچ درخواست دسترسی باز نمی‌کنیم.
-         اطلاعات IndexedDB همچنان فعال می‌مانند.
         */
 
         await tryAutoConnect();
@@ -4461,12 +4454,6 @@ async function initApp() {
             error
         );
 
-
-        /*
-         حتی اگر IndexedDB هم مشکل داشته باشد،
-         برنامه با دیتابیس خالی بالا می‌آید؛
-         ولی دیگر حلقه اتصال ایجاد نمی‌شود.
-        */
 
         try {
 
