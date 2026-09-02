@@ -1912,4 +1912,2473 @@ async function editProduct(
 
 
     openModal(
-        "product
+        "productModal"
+    );
+}
+
+
+/* ============================================================
+   DELETE PRODUCT
+   ============================================================ */
+
+async function deleteProduct(
+    productId
+) {
+
+    const product =
+        await getProduct(
+            productId
+        );
+
+
+    if (!product) return;
+
+
+    if (
+        !confirm(
+            `کالای «${product.name}» حذف شود؟`
+        )
+    ) {
+
+        return;
+    }
+
+
+    database.products =
+        database.products.filter(
+            item =>
+                item.id !== productId
+        );
+
+
+    delete database.inventory[
+        productId
+    ];
+
+
+    cart =
+        cart.filter(
+            item =>
+                item.productId !==
+                productId
+        );
+
+
+    await saveDatabase();
+
+
+    await refreshAll();
+
+
+    showToast(
+        "کالا حذف شد."
+    );
+}
+
+
+/* ============================================================
+   PRODUCTS LIST
+   ============================================================ */
+
+async function renderProducts(
+    search = ""
+) {
+
+    const container =
+        document.getElementById(
+            "productsList"
+        );
+
+
+    if (!container) return;
+
+
+    let products =
+        await getProducts();
+
+
+    const text =
+        search
+            .trim()
+            .toLowerCase();
+
+
+    if (text) {
+
+        products =
+            products.filter(
+                product =>
+                    String(
+                        product.name || ""
+                    )
+                    .toLowerCase()
+                    .includes(text)
+                    ||
+                    String(
+                        product.barcode || ""
+                    )
+                    .toLowerCase()
+                    .includes(text)
+                    ||
+                    String(
+                        product.category || ""
+                    )
+                    .toLowerCase()
+                    .includes(text)
+            );
+    }
+
+
+    products =
+        [...products].sort(
+            (a, b) =>
+                String(
+                    b.createdAt || ""
+                ).localeCompare(
+                    String(
+                        a.createdAt || ""
+                    )
+                )
+        );
+
+
+    if (!products.length) {
+
+        container.innerHTML =
+            `<div class="empty">
+                کالایی پیدا نشد.
+            </div>`;
+
+        return;
+    }
+
+
+    let html = "";
+
+
+    for (
+        const product of products
+    ) {
+
+        const quantity =
+            await getQuantity(
+                product.id
+            );
+
+
+        let stockClass =
+            "good";
+
+
+        if (
+            quantity <= 0
+        ) {
+
+            stockClass =
+                "empty";
+
+        } else if (
+            quantity <= 5
+        ) {
+
+            stockClass =
+                "low";
+        }
+
+
+        html += `
+
+        <div class="product-card">
+
+            <div class="product-main">
+
+                <div class="product-info">
+
+                    <div class="product-name">
+                        ${escapeHTML(
+                            product.name
+                        )}
+                    </div>
+
+                    <div class="product-barcode">
+                        ${escapeHTML(
+                            product.barcode
+                        )}
+                    </div>
+
+                </div>
+
+
+                <div class="product-price">
+
+                    <small>
+                        قیمت فروش
+                    </small>
+
+                    <strong>
+                        ${formatMoney(
+                            product.salePrice
+                        )}
+                    </strong>
+
+                </div>
+
+            </div>
+
+
+            <div class="product-bottom">
+
+                <div class="stock ${stockClass}">
+
+                    موجودی:
+                    ${quantity.toLocaleString(
+                        "fa-IR"
+                    )}
+
+                    ${escapeHTML(
+                        product.unit ||
+                        "عدد"
+                    )}
+
+                </div>
+
+
+                <div class="product-actions">
+
+                    <button
+                        class="small-button"
+                        onclick="openStockModal('${product.id}')"
+                        type="button"
+                    >
+                        موجودی
+                    </button>
+
+                    <button
+                        class="small-button"
+                        onclick="editProduct('${product.id}')"
+                        type="button"
+                    >
+                        ویرایش
+                    </button>
+
+                    <button
+                        class="small-button danger"
+                        onclick="deleteProduct('${product.id}')"
+                        type="button"
+                    >
+                        حذف
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+        `;
+    }
+
+
+    container.innerHTML =
+        html;
+}
+
+
+/* ============================================================
+   INVENTORY LIST
+   ============================================================ */
+
+async function renderInventory(
+    search = ""
+) {
+
+    const container =
+        document.getElementById(
+            "inventoryList"
+        );
+
+
+    if (!container) return;
+
+
+    let products =
+        await getProducts();
+
+
+    const text =
+        search
+            .trim()
+            .toLowerCase();
+
+
+    if (text) {
+
+        products =
+            products.filter(
+                product =>
+                    String(
+                        product.name || ""
+                    )
+                    .toLowerCase()
+                    .includes(text)
+                    ||
+                    String(
+                        product.barcode || ""
+                    )
+                    .toLowerCase()
+                    .includes(text)
+            );
+    }
+
+
+    if (!products.length) {
+
+        container.innerHTML =
+            `<div class="empty">
+                موجودی خالی است.
+            </div>`;
+
+        return;
+    }
+
+
+    let html = "";
+
+
+    for (
+        const product of products
+    ) {
+
+        const quantity =
+            await getQuantity(
+                product.id
+            );
+
+
+        let stockClass =
+            "good";
+
+
+        if (
+            quantity <= 0
+        ) {
+
+            stockClass =
+                "empty";
+
+        } else if (
+            quantity <= 5
+        ) {
+
+            stockClass =
+                "low";
+        }
+
+
+        html += `
+
+        <div class="product-card">
+
+            <div class="product-main">
+
+                <div class="product-info">
+
+                    <div class="product-name">
+                        ${escapeHTML(
+                            product.name
+                        )}
+                    </div>
+
+                    <div class="product-barcode">
+                        ${escapeHTML(
+                            product.barcode
+                        )}
+                    </div>
+
+                </div>
+
+
+                <div class="stock ${stockClass}">
+
+                    ${quantity.toLocaleString(
+                        "fa-IR"
+                    )}
+
+                    ${escapeHTML(
+                        product.unit ||
+                        "عدد"
+                    )}
+
+                </div>
+
+            </div>
+
+
+            <div class="product-bottom">
+
+                <span>
+                    قیمت فروش:
+                    ${formatMoney(
+                        product.salePrice
+                    )}
+                </span>
+
+                <button
+                    class="small-button"
+                    onclick="openStockModal('${product.id}')"
+                    type="button"
+                >
+                    تغییر موجودی
+                </button>
+
+            </div>
+
+        </div>
+        `;
+    }
+
+
+    container.innerHTML =
+        html;
+}
+
+
+/* ============================================================
+   STOCK MODAL
+   ============================================================ */
+
+async function openStockModal(
+    productId
+) {
+
+    const product =
+        await getProduct(
+            productId
+        );
+
+
+    if (!product) return;
+
+
+    const quantity =
+        await getQuantity(
+            productId
+        );
+
+
+    document
+        .getElementById(
+            "stockProductId"
+        )
+        .value =
+            productId;
+
+
+    document
+        .getElementById(
+            "stockProductName"
+        )
+        .textContent =
+            `${product.name} — موجودی فعلی: ${quantity}`;
+
+
+    document
+        .getElementById(
+            "stockAmount"
+        )
+        .value =
+            "";
+
+
+    document
+        .getElementById(
+            "stockAction"
+        )
+        .value =
+            "increase";
+
+
+    openModal(
+        "stockModal"
+    );
+}
+
+
+/* ============================================================
+   STOCK FORM
+   ============================================================ */
+
+document
+    .getElementById("stockForm")
+    .addEventListener(
+        "submit",
+        async function (event) {
+
+            event.preventDefault();
+
+
+            try {
+
+                const productId =
+                    document
+                        .getElementById(
+                            "stockProductId"
+                        )
+                        .value;
+
+
+                const action =
+                    document
+                        .getElementById(
+                            "stockAction"
+                        )
+                        .value;
+
+
+                const amount =
+                    Number(
+                        document
+                            .getElementById(
+                                "stockAmount"
+                            )
+                            .value
+                    );
+
+
+                if (
+                    !Number.isFinite(amount) ||
+                    amount < 0
+                ) {
+
+                    throw new Error(
+                        "مقدار نامعتبر است."
+                    );
+                }
+
+
+                const current =
+                    await getQuantity(
+                        productId
+                    );
+
+
+                let newQuantity;
+
+
+                if (
+                    action === "increase"
+                ) {
+
+                    newQuantity =
+                        current + amount;
+
+                } else if (
+                    action === "decrease"
+                ) {
+
+                    if (
+                        amount > current
+                    ) {
+
+                        throw new Error(
+                            "موجودی کافی نیست."
+                        );
+                    }
+
+
+                    newQuantity =
+                        current - amount;
+
+                } else {
+
+                    newQuantity =
+                        amount;
+                }
+
+
+                await setQuantity(
+                    productId,
+                    newQuantity
+                );
+
+
+                const saved =
+                    await saveDatabase();
+
+
+                if (!saved) {
+
+                    throw new Error(
+                        "ذخیره موجودی ناموفق بود."
+                    );
+                }
+
+
+                closeModal(
+                    "stockModal"
+                );
+
+
+                await refreshAll();
+
+
+                showToast(
+                    "موجودی ذخیره شد."
+                );
+
+            } catch (error) {
+
+                console.error(error);
+
+                showToast(
+                    error.message
+                );
+            }
+
+        }
+    );
+
+
+/* ============================================================
+   SALES / CART
+   ============================================================ */
+
+async function addToCart(
+    productId
+) {
+
+    const product =
+        await getProduct(
+            productId
+        );
+
+
+    if (!product) return;
+
+
+    const quantity =
+        await getQuantity(
+            productId
+        );
+
+
+    if (
+        quantity <= 0
+    ) {
+
+        showToast(
+            "این کالا موجود نیست."
+        );
+
+        return;
+    }
+
+
+    const existing =
+        cart.find(
+            item =>
+                item.productId ===
+                productId
+        );
+
+
+    if (existing) {
+
+        if (
+            existing.quantity >=
+            quantity
+        ) {
+
+            showToast(
+                "موجودی کافی نیست."
+            );
+
+            return;
+        }
+
+
+        existing.quantity++;
+
+    } else {
+
+        cart.push({
+
+            productId:
+                productId,
+
+            quantity:
+                1
+
+        });
+    }
+
+
+    await renderCart();
+}
+
+
+function removeFromCart(
+    productId
+) {
+
+    cart =
+        cart.filter(
+            item =>
+                item.productId !==
+                productId
+        );
+
+
+    renderCart();
+}
+
+
+async function changeCartQuantity(
+    productId,
+    change
+) {
+
+    const item =
+        cart.find(
+            item =>
+                item.productId ===
+                productId
+        );
+
+
+    if (!item) return;
+
+
+    const stock =
+        await getQuantity(
+            productId
+        );
+
+
+    const newQuantity =
+        item.quantity +
+        change;
+
+
+    if (
+        newQuantity <= 0
+    ) {
+
+        removeFromCart(
+            productId
+        );
+
+        return;
+    }
+
+
+    if (
+        newQuantity >
+        stock
+    ) {
+
+        showToast(
+            "موجودی کافی نیست."
+        );
+
+        return;
+    }
+
+
+    item.quantity =
+        newQuantity;
+
+
+    await renderCart();
+}
+
+
+/* ============================================================
+   CART
+   ============================================================ */
+
+async function renderCart() {
+
+    const container =
+        document.getElementById(
+            "cartList"
+        );
+
+
+    if (!container) return;
+
+
+    if (!cart.length) {
+
+        container.innerHTML =
+            `<div class="empty">
+                سبد فروش خالی است.
+            </div>`;
+
+
+        document
+            .getElementById(
+                "cartTotal"
+            )
+            .textContent =
+                "0 تومان";
+
+
+        return;
+    }
+
+
+    let html = "";
+
+    let total = 0;
+
+
+    for (
+        const item of cart
+    ) {
+
+        const product =
+            await getProduct(
+                item.productId
+            );
+
+
+        if (!product) continue;
+
+
+        const itemTotal =
+            Number(
+                product.salePrice
+            ) *
+            item.quantity;
+
+
+        total +=
+            itemTotal;
+
+
+        html += `
+
+        <div class="cart-item">
+
+            <div class="cart-info">
+
+                <strong>
+                    ${escapeHTML(
+                        product.name
+                    )}
+                </strong>
+
+                <small>
+                    ${formatMoney(
+                        product.salePrice
+                    )}
+
+                    ×
+
+                    ${item.quantity.toLocaleString(
+                        "fa-IR"
+                    )}
+
+                </small>
+
+            </div>
+
+
+            <div class="cart-controls">
+
+                <button
+                    class="quantity-button"
+                    onclick="changeCartQuantity('${product.id}', 1)"
+                    type="button"
+                >
+                    +
+                </button>
+
+                <strong>
+                    ${item.quantity.toLocaleString(
+                        "fa-IR"
+                    )}
+                </strong>
+
+                <button
+                    class="quantity-button"
+                    onclick="changeCartQuantity('${product.id}', -1)"
+                    type="button"
+                >
+                    −
+                </button>
+
+            </div>
+
+        </div>
+        `;
+    }
+
+
+    container.innerHTML =
+        html;
+
+
+    document
+        .getElementById(
+            "cartTotal"
+        )
+        .textContent =
+            formatMoney(total);
+}
+
+
+/* ============================================================
+   CHECKOUT
+   ============================================================ */
+
+async function checkout() {
+
+    if (!cart.length) {
+
+        showToast(
+            "سبد فروش خالی است."
+        );
+
+        return;
+    }
+
+
+    const saleId =
+        generateId(
+            "sale"
+        );
+
+
+    const createdAt =
+        nowISO();
+
+
+    let total = 0;
+
+    const saleItems = [];
+
+
+    for (
+        const item of cart
+    ) {
+
+        const product =
+            await getProduct(
+                item.productId
+            );
+
+
+        if (!product) {
+
+            throw new Error(
+                "یکی از کالاها پیدا نشد."
+            );
+        }
+
+
+        const stock =
+            await getQuantity(
+                item.productId
+            );
+
+
+        if (
+            item.quantity >
+            stock
+        ) {
+
+            throw new Error(
+                `موجودی «${product.name}» کافی نیست.`
+            );
+        }
+
+
+        const itemTotal =
+            Number(
+                product.salePrice
+            ) *
+            item.quantity;
+
+
+        total +=
+            itemTotal;
+
+
+        saleItems.push({
+
+            id:
+                generateId(
+                    "saleitem"
+                ),
+
+            saleId:
+                saleId,
+
+            productId:
+                product.id,
+
+            quantity:
+                item.quantity,
+
+            unitPrice:
+                Number(
+                    product.salePrice
+                ),
+
+            totalPrice:
+                itemTotal
+
+        });
+    }
+
+
+    database.sales.push({
+
+        id:
+            saleId,
+
+        totalAmount:
+            total,
+
+        discount:
+            0,
+
+        finalAmount:
+            total,
+
+        createdAt:
+            createdAt
+
+    });
+
+
+    for (
+        const item of saleItems
+    ) {
+
+        database.sale_items.push(
+            item
+        );
+
+
+        const current =
+            await getQuantity(
+                item.productId
+            );
+
+
+        await setQuantity(
+            item.productId,
+            current -
+            item.quantity
+        );
+    }
+
+
+    const saved =
+        await saveDatabase();
+
+
+    if (!saved) {
+
+        throw new Error(
+            "ثبت فروش ناموفق بود."
+        );
+    }
+
+
+    cart = [];
+
+
+    await refreshAll();
+
+
+    showToast(
+        "فروش با موفقیت ذخیره شد."
+    );
+}
+
+
+/* ============================================================
+   TODAY SALES
+   ============================================================ */
+
+function isToday(
+    isoDate
+) {
+
+    const date =
+        new Date(
+            isoDate
+        );
+
+
+    const now =
+        new Date();
+
+
+    return (
+        date.getFullYear() ===
+            now.getFullYear()
+        &&
+        date.getMonth() ===
+            now.getMonth()
+        &&
+        date.getDate() ===
+            now.getDate()
+    );
+}
+
+
+async function getTodaySales() {
+
+    return database.sales.filter(
+        sale =>
+            isToday(
+                sale.createdAt
+            )
+    );
+}
+
+
+/* ============================================================
+   DASHBOARD
+   ============================================================ */
+
+async function renderDashboard() {
+
+    const products =
+        await getProducts();
+
+
+    let totalStock = 0;
+
+
+    for (
+        const product of products
+    ) {
+
+        totalStock +=
+            await getQuantity(
+                product.id
+            );
+    }
+
+
+    const sales =
+        await getTodaySales();
+
+
+    const salesAmount =
+        sales.reduce(
+            (
+                sum,
+                sale
+            ) =>
+                sum +
+                (
+                    Number(
+                        sale.finalAmount
+                    ) || 0
+                ),
+            0
+        );
+
+
+    document
+        .getElementById(
+            "totalProducts"
+        )
+        .textContent =
+            products.length.toLocaleString(
+                "fa-IR"
+            );
+
+
+    document
+        .getElementById(
+            "totalStock"
+        )
+        .textContent =
+            totalStock.toLocaleString(
+                "fa-IR"
+            );
+
+
+    document
+        .getElementById(
+            "todaySales"
+        )
+        .textContent =
+            sales.length.toLocaleString(
+                "fa-IR"
+            );
+
+
+    document
+        .getElementById(
+            "todaySalesAmount"
+        )
+        .textContent =
+            formatMoney(
+                salesAmount
+            );
+
+
+    await renderLowStock();
+}
+
+
+/* ============================================================
+   LOW STOCK
+   ============================================================ */
+
+async function renderLowStock() {
+
+    const container =
+        document.getElementById(
+            "lowStockList"
+        );
+
+
+    if (!container) return;
+
+
+    const products =
+        await getProducts();
+
+
+    const lowStock = [];
+
+
+    for (
+        const product of products
+    ) {
+
+        const quantity =
+            await getQuantity(
+                product.id
+            );
+
+
+        if (
+            quantity <= 5
+        ) {
+
+            lowStock.push({
+
+                product:
+                    product,
+
+                quantity:
+                    quantity
+
+            });
+        }
+    }
+
+
+    if (!lowStock.length) {
+
+        container.innerHTML =
+            `<div class="empty">
+                همه کالاها موجودی مناسبی دارند.
+            </div>`;
+
+        return;
+    }
+
+
+    let html = "";
+
+
+    for (
+        const item of lowStock.slice(
+            0,
+            5
+        )
+    ) {
+
+        html += `
+
+        <div class="product-card">
+
+            <div class="product-main">
+
+                <div class="product-info">
+
+                    <div class="product-name">
+                        ${escapeHTML(
+                            item.product.name
+                        )}
+                    </div>
+
+                    <div class="product-barcode">
+                        ${escapeHTML(
+                            item.product.barcode
+                        )}
+                    </div>
+
+                </div>
+
+
+                <div class="stock ${
+                    item.quantity <= 0
+                        ? "empty"
+                        : "low"
+                }">
+
+                    موجودی:
+                    ${item.quantity.toLocaleString(
+                        "fa-IR"
+                    )}
+
+                </div>
+
+            </div>
+
+        </div>
+        `;
+    }
+
+
+    container.innerHTML =
+        html;
+}
+
+
+/* ============================================================
+   INVENTORY SUMMARY
+   ============================================================ */
+
+async function renderInventorySummary() {
+
+    const products =
+        await getProducts();
+
+
+    let total = 0;
+
+
+    for (
+        const product of products
+    ) {
+
+        total +=
+            await getQuantity(
+                product.id
+            );
+    }
+
+
+    document
+        .getElementById(
+            "inventoryProductCount"
+        )
+        .textContent =
+            products.length.toLocaleString(
+                "fa-IR"
+            );
+
+
+    document
+        .getElementById(
+            "inventoryTotalStock"
+        )
+        .textContent =
+            total.toLocaleString(
+                "fa-IR"
+            );
+}
+
+
+/* ============================================================
+   SALE SEARCH
+   ============================================================ */
+
+async function renderSaleSearch(
+    text
+) {
+
+    const container =
+        document.getElementById(
+            "saleSearchResults"
+        );
+
+
+    if (!container) return;
+
+
+    text =
+        String(
+            text || ""
+        )
+        .trim()
+        .toLowerCase();
+
+
+    if (!text) {
+
+        container.innerHTML = "";
+
+        return;
+    }
+
+
+    const products =
+        await getProducts();
+
+
+    const results =
+        products
+            .filter(
+                product =>
+                    String(
+                        product.name || ""
+                    )
+                    .toLowerCase()
+                    .includes(text)
+                    ||
+                    String(
+                        product.barcode || ""
+                    )
+                    .toLowerCase()
+                    .includes(text)
+            )
+            .slice(
+                0,
+                10
+            );
+
+
+    if (!results.length) {
+
+        container.innerHTML =
+            `<div class="empty">
+                کالایی پیدا نشد.
+            </div>`;
+
+        return;
+    }
+
+
+    let html = "";
+
+
+    for (
+        const product of results
+    ) {
+
+        const quantity =
+            await getQuantity(
+                product.id
+            );
+
+
+        html += `
+
+        <div class="sale-result">
+
+            <div class="sale-result-info">
+
+                <strong>
+                    ${escapeHTML(
+                        product.name
+                    )}
+                </strong>
+
+                <small>
+
+                    ${escapeHTML(
+                        product.barcode
+                    )}
+
+                    · موجودی:
+
+                    ${quantity.toLocaleString(
+                        "fa-IR"
+                    )}
+
+                    ·
+
+                    ${formatMoney(
+                        product.salePrice
+                    )}
+
+                </small>
+
+            </div>
+
+
+            <button
+                class="small-button"
+                onclick="addToCart('${product.id}')"
+                type="button"
+            >
+                افزودن
+            </button>
+
+        </div>
+        `;
+    }
+
+
+    container.innerHTML =
+        html;
+}
+
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
+
+function showPage(
+    pageName
+) {
+
+    document
+        .querySelectorAll(
+            ".page"
+        )
+        .forEach(
+            page =>
+                page.classList.remove(
+                    "active"
+                )
+        );
+
+
+    const page =
+        document.getElementById(
+            pageName +
+            "Page"
+        );
+
+
+    if (page) {
+
+        page.classList.add(
+            "active"
+        );
+    }
+
+
+    document
+        .querySelectorAll(
+            ".nav-btn"
+        )
+        .forEach(
+            button => {
+
+                button.classList.toggle(
+                    "active",
+                    button.dataset.page ===
+                        pageName
+                );
+
+            }
+        );
+}
+
+
+/* ============================================================
+   MODALS
+   ============================================================ */
+
+function openModal(id) {
+
+    const modal =
+        document.getElementById(
+            id
+        );
+
+
+    if (modal) {
+
+        modal.classList.add(
+            "show"
+        );
+    }
+}
+
+
+function closeModal(id) {
+
+    const modal =
+        document.getElementById(
+            id
+        );
+
+
+    if (modal) {
+
+        modal.classList.remove(
+            "show"
+        );
+    }
+}
+
+
+/* ============================================================
+   MODAL EVENTS
+   ============================================================ */
+
+document
+    .querySelectorAll(
+        "[data-close-modal]"
+    )
+    .forEach(
+        button => {
+
+            button.addEventListener(
+                "click",
+                () => {
+
+                    closeModal(
+                        button.dataset
+                            .closeModal
+                    );
+
+                }
+            );
+
+        }
+    );
+
+
+document
+    .querySelectorAll(
+        ".modal"
+    )
+    .forEach(
+        modal => {
+
+            modal.addEventListener(
+                "click",
+                event => {
+
+                    if (
+                        event.target ===
+                        modal
+                    ) {
+
+                        modal.classList
+                            .remove(
+                                "show"
+                            );
+                    }
+
+                }
+            );
+
+        }
+    );
+
+
+/* ============================================================
+   ADD PRODUCT
+   ============================================================ */
+
+function openAddProductModal() {
+
+    document
+        .getElementById(
+            "productModalTitle"
+        )
+        .textContent =
+            "افزودن کالا";
+
+
+    document
+        .getElementById(
+            "productForm"
+        )
+        .reset();
+
+
+    document
+        .getElementById(
+            "productId"
+        )
+        .value =
+            "";
+
+
+    document
+        .getElementById(
+            "initialQuantity"
+        )
+        .value =
+            "0";
+
+
+    openModal(
+        "productModal"
+    );
+}
+
+
+/* ============================================================
+   EVENT LISTENERS
+   ============================================================ */
+
+document
+    .querySelectorAll(
+        ".nav-btn"
+    )
+    .forEach(
+        button => {
+
+            button.addEventListener(
+                "click",
+                async () => {
+
+                    const page =
+                        button.dataset
+                            .page;
+
+
+                    showPage(
+                        page
+                    );
+
+
+                    if (
+                        page ===
+                        "products"
+                    ) {
+
+                        await renderProducts();
+
+                    }
+
+
+                    if (
+                        page ===
+                        "inventory"
+                    ) {
+
+                        await renderInventory();
+
+                        await renderInventorySummary();
+
+                    }
+
+
+                    if (
+                        page ===
+                        "sale"
+                    ) {
+
+                        await renderCart();
+
+                    }
+
+                }
+            );
+
+        }
+    );
+
+
+/* ============================================================
+   FOLDER BUTTON
+   ============================================================ */
+
+document
+    .getElementById(
+        "settingsBtn"
+    )
+    .addEventListener(
+        "click",
+        async () => {
+
+            /*
+             اگر handle قبلی داریم،
+             اول تلاش می‌کنیم همان پوشه را دوباره
+             با اجازه‌ای که فقط با کلیک کاربر درخواست
+             می‌شود فعال کنیم.
+            */
+
+            if (folderHandle) {
+
+                const reconnected =
+                    await reconnectExistingFolder();
+
+
+                if (reconnected) {
+
+                    return;
+                }
+            }
+
+
+            /*
+             اگر handle قبلی قابل استفاده نبود،
+             انتخاب پوشه جدید.
+            */
+
+            await chooseFolder();
+
+        }
+    );
+
+
+/* ============================================================
+   ADD PRODUCT BUTTON
+   ============================================================ */
+
+document
+    .getElementById(
+        "addProductBtn"
+    )
+    .addEventListener(
+        "click",
+        openAddProductModal
+    );
+
+
+document
+    .getElementById(
+        "quickAddProduct"
+    )
+    .addEventListener(
+        "click",
+        () => {
+
+            showPage(
+                "products"
+            );
+
+            openAddProductModal();
+
+        }
+    );
+
+
+/* ============================================================
+   QUICK SALE
+   ============================================================ */
+
+document
+    .getElementById(
+        "quickSale"
+    )
+    .addEventListener(
+        "click",
+        () => {
+
+            showPage(
+                "sale"
+            );
+
+            renderCart();
+
+        }
+    );
+
+
+/* ============================================================
+   SEARCH
+   ============================================================ */
+
+document
+    .getElementById(
+        "productSearch"
+    )
+    .addEventListener(
+        "input",
+        event => {
+
+            renderProducts(
+                event.target.value
+            );
+
+        }
+    );
+
+
+document
+    .getElementById(
+        "inventorySearch"
+    )
+    .addEventListener(
+        "input",
+        event => {
+
+            renderInventory(
+                event.target.value
+            );
+
+        }
+    );
+
+
+document
+    .getElementById(
+        "saleSearch"
+    )
+    .addEventListener(
+        "input",
+        event => {
+
+            renderSaleSearch(
+                event.target.value
+            );
+
+        }
+    );
+
+
+/* ============================================================
+   CLEAR CART
+   ============================================================ */
+
+document
+    .getElementById(
+        "clearCartBtn"
+    )
+    .addEventListener(
+        "click",
+        () => {
+
+            cart = [];
+
+            renderCart();
+
+        }
+    );
+
+
+/* ============================================================
+   CHECKOUT
+   ============================================================ */
+
+document
+    .getElementById(
+        "checkoutBtn"
+    )
+    .addEventListener(
+        "click",
+        async () => {
+
+            try {
+
+                await checkout();
+
+            } catch (error) {
+
+                console.error(error);
+
+                showToast(
+                    error.message ||
+                    "ثبت فروش ناموفق بود."
+                );
+            }
+
+        }
+    );
+
+
+/* ============================================================
+   LOW STOCK
+   ============================================================ */
+
+document
+    .getElementById(
+        "showLowStock"
+    )
+    .addEventListener(
+        "click",
+        () => {
+
+            showPage(
+                "inventory"
+            );
+
+            renderInventory();
+
+            renderInventorySummary();
+
+        }
+    );
+
+
+/* ============================================================
+   BARCODE ENTER
+   ============================================================ */
+
+document
+    .getElementById(
+        "productBarcode"
+    )
+    .addEventListener(
+        "keydown",
+        event => {
+
+            if (
+                event.key ===
+                "Enter"
+            ) {
+
+                event.preventDefault();
+
+
+                document
+                    .getElementById(
+                        "productName"
+                    )
+                    .focus();
+
+            }
+
+        }
+    );
+
+
+/* ============================================================
+   BARCODE SCANNER
+   BINARY EYE
+   ============================================================ */
+
+let barcodeScannerTarget = "sale";
+
+const BINARY_EYE_TARGET_KEY =
+    "bizadshop_barcode_target";
+
+
+/* ============================================================
+   GET BARCODE INPUT
+   ============================================================ */
+
+function getBarcodeInput(target) {
+
+    if (target === "product") {
+
+        return document.getElementById(
+            "productBarcode"
+        );
+    }
+
+    return document.getElementById(
+        "saleSearch"
+    );
+}
+
+
+/* ============================================================
+   START BINARY EYE
+   ============================================================ */
+
+function startBarcodeScanner(
+    target = "sale"
+) {
+
+    barcodeScannerTarget =
+        target === "product"
+            ? "product"
+            : "sale";
+
+
+    /*
+     مقصد را ذخیره می‌کنیم تا بعد از
+     برگشت از Binary Eye بدانیم بارکد
+     باید داخل کدام فیلد قرار بگیرد.
+    */
+
+    sessionStorage.setItem(
+        BINARY_EYE_TARGET_KEY,
+        barcodeScannerTarget
+    );
+
+
+    /*
+     آدرس برگشت سایت
+    */
+
+    const returnURL =
+        window.location.origin +
+        window.location.pathname +
+        "?binaryeye_result={RESULT}";
+
+
+    /*
+     Deep Link رسمی Binary Eye
+    */
+
+    const binaryEyeURL =
+        "binaryeye://scan?ret=" +
+        encodeURIComponent(
+            returnURL
+        );
+
+
+    console.log(
+        "Binary Eye URL:",
+        binaryEyeURL
+    );
+
+
+    /*
+     باز کردن برنامه Binary Eye
+    */
+
+    window.location.href =
+        binaryEyeURL;
+}
+
+
+/* ============================================================
+   HANDLE RESULT FROM BINARY EYE
+   ============================================================ */
+
+function handleBinaryEyeResult() {
+
+    const url =
+        new URL(
+            window.location.href
+        );
+
+
+    const barcode =
+        url.searchParams.get(
+            "binaryeye_result"
+        );
+
+
+    /*
+     اگر از Binary Eye برنگشته‌ایم
+    */
+
+    if (
+        barcode === null
+    ) {
+
+        return;
+    }
+
+
+    const cleanBarcode =
+        String(
+            barcode
+        ).trim();
+
+
+    if (!cleanBarcode) {
+
+        return;
+    }
+
+
+    /*
+     تشخیص اینکه اسکن برای فروش بوده
+     یا ثبت کالا
+    */
+
+    const target =
+        sessionStorage.getItem(
+            BINARY_EYE_TARGET_KEY
+        ) || "sale";
+
+
+    sessionStorage.removeItem(
+        BINARY_EYE_TARGET_KEY
+    );
+
+
+    barcodeScannerTarget =
+        target === "product"
+            ? "product"
+            : "sale";
+
+
+    /*
+     پیدا کردن فیلد مقصد
+    */
+
+    const input =
+        getBarcodeInput(
+            barcodeScannerTarget
+        );
+
+
+    if (input) {
+
+        input.value =
+            cleanBarcode;
+
+
+        /*
+         اجرای رفتار عادی input
+        */
+
+        input.dispatchEvent(
+            new Event(
+                "input",
+                {
+                    bubbles: true
+                }
+            )
+        );
+
+
+        input.focus();
+    }
+
+
+    /*
+     پاک کردن نتیجه از URL
+     تا با Refresh دوباره اجرا نشود.
+    */
+
+    url.searchParams.delete(
+        "binaryeye_result"
+    );
+
+
+    const cleanURL =
+        url.pathname +
+        (
+            url.searchParams.toString()
+                ? "?" +
+                  url.searchParams.toString()
+                : ""
+        ) +
+        url.hash;
+
+
+    window.history.replaceState(
+        {},
+        document.title,
+        cleanURL
+    );
+
+
+    showToast(
+        "بارکد شناسایی شد: " +
+        cleanBarcode
+    );
+}
+
+
+/* ============================================================
+   SALES SCAN BUTTON
+   ============================================================ */
+
+document
+    .getElementById(
+        "scanBarcodeBtn"
+    )
+    ?.addEventListener(
+        "click",
+        function (event) {
+
+            event.preventDefault();
+
+            event.stopPropagation();
+
+
+            startBarcodeScanner(
+                "sale"
+            );
+        }
+    );
+
+
+/* ============================================================
+   PRODUCT SCAN BUTTON
+   ============================================================ */
+
+document
+    .getElementById(
+        "productScanBarcodeBtn"
+    )
+    ?.addEventListener(
+        "click",
+        function (event) {
+
+            event.preventDefault();
+
+            event.stopPropagation();
+
+
+            startBarcodeScanner(
+                "product"
+            );
+        }
+    );
+
+
+/* ============================================================
+   CHECK RESULT AFTER RETURN
+   ============================================================ */
+
+if (
+    document.readyState ===
+    "loading"
+) {
+
+    document.addEventListener(
+        "DOMContentLoaded",
+        function () {
+
+            handleBinaryEyeResult();
+
+        }
+    );
+
+} else {
+
+    handleBinaryEyeResult();
+
+}
+/* ============================================================
+   REFRESH ALL
+   ============================================================ */
+
+async function refreshAll() {
+
+    await renderDashboard();
+
+
+    await renderProducts(
+        document
+            .getElementById(
+                "productSearch"
+            )
+            .value
+    );
+
+
+    await renderInventory(
+        document
+            .getElementById(
+                "inventorySearch"
+            )
+            .value
+    );
+
+
+    await renderInventorySummary();
+
+
+    await renderCart();
+}
+
+
+/* ============================================================
+   INITIALIZE
+   ============================================================ */
+
+async function initApp() {
+
+    if (initialized) {
+
+        return;
+    }
+
+
+    initialized = true;
+
+
+    try {
+
+        /*
+         مرحله اول:
+         اطلاعات محلی را سریع بارگذاری می‌کنیم.
+         بنابراین صفحه هیچ‌وقت با دیتابیس صفر بالا نمی‌آید.
+        */
+
+        await loadLocalDatabase();
+
+
+        setConnectionStatus(
+            "اطلاعات فروشگاه آماده است",
+            "local"
+        );
+
+
+        await refreshAll();
+
+
+        /*
+         مرحله دوم:
+         تلاش برای اتصال خودکار به پوشه.
+
+         اگر مرورگر مجوز را حفظ کرده باشد:
+         بدون هیچ کلیک کاربر وصل می‌شود.
+
+         اگر مجوز را حفظ نکرده باشد:
+         هیچ درخواست دسترسی باز نمی‌کنیم.
+         اطلاعات IndexedDB همچنان فعال می‌مانند.
+        */
+
+        await tryAutoConnect();
+
+
+        console.log(
+            "Bizadshop آماده است."
+        );
+
+    } catch (error) {
+
+        console.error(
+            "initApp:",
+            error
+        );
+
+
+        /*
+         حتی اگر IndexedDB هم مشکل داشته باشد،
+         برنامه با دیتابیس خالی بالا می‌آید؛
+         ولی دیگر حلقه اتصال ایجاد نمی‌شود.
+        */
+
+        try {
+
+            database =
+                createEmptyDatabase();
+
+            await refreshAll();
+
+        } catch (refreshError) {
+
+            console.error(
+                refreshError
+            );
+        }
+
+
+        setConnectionStatus(
+            "حالت محلی فعال است",
+            "local"
+        );
+
+
+        showToast(
+            "Bizadshop در حالت محلی اجرا شد."
+        );
+    }
+}
+
+
+/* ============================================================
+   START
+   ============================================================ */
+
+if (
+    document.readyState ===
+    "loading"
+) {
+
+    document.addEventListener(
+        "DOMContentLoaded",
+        initApp
+    );
+
+} else {
+
+    initApp();
+
+}
