@@ -218,9 +218,11 @@
                 </div>
 
                 <div id="lowStockList">
+
                     <div class="empty">
                         در حال بارگذاری...
                     </div>
+
                 </div>
 
             </div>
@@ -459,10 +461,14 @@
                 >
 
 
+                <!-- ================= BARCODE ================= -->
+
                 <label class="barcode-field">
+
                     بارکد
 
                     <div class="barcode-input-row">
+
                         <input
                             id="productBarcode"
                             type="text"
@@ -477,14 +483,23 @@
                             id="productScanBarcodeBtn"
                             class="barcode-scan-btn"
                             type="button"
-                        >📷 اسکن</button>
+                        >
+                            📷 اسکن
+                        </button>
+
                     </div>
 
-                    <small class="barcode-hint">می‌توانید بارکد را دستی وارد کنید یا با دوربین اسکن کنید.</small>
+                    <small class="barcode-hint">
+                        می‌توانید بارکد را دستی وارد کنید یا با اسکنر اسکن کنید.
+                    </small>
+
                 </label>
 
 
+                <!-- ================= NAME ================= -->
+
                 <label>
+
                     نام کالا
 
                     <input
@@ -497,7 +512,10 @@
                 </label>
 
 
+                <!-- ================= CATEGORY ================= -->
+
                 <label>
+
                     دسته‌بندی
 
                     <input
@@ -509,9 +527,12 @@
                 </label>
 
 
+                <!-- ================= PRICES ================= -->
+
                 <div class="two-columns">
 
                     <label>
+
                         قیمت خرید
 
                         <input
@@ -526,6 +547,7 @@
 
 
                     <label>
+
                         قیمت فروش
 
                         <input
@@ -542,19 +564,39 @@
                 </div>
 
 
+                <!-- ================= UNIT / QUANTITY ================= -->
+
                 <div class="two-columns">
 
                     <label>
+
                         واحد
 
                         <select id="productUnit">
 
-                            <option value="عدد">عدد</option>
-                            <option value="کیلو">کیلو</option>
-                            <option value="گرم">گرم</option>
-                            <option value="لیتر">لیتر</option>
-                            <option value="متر">متر</option>
-                            <option value="بسته">بسته</option>
+                            <option value="عدد">
+                                عدد
+                            </option>
+
+                            <option value="کیلو">
+                                کیلو
+                            </option>
+
+                            <option value="گرم">
+                                گرم
+                            </option>
+
+                            <option value="لیتر">
+                                لیتر
+                            </option>
+
+                            <option value="متر">
+                                متر
+                            </option>
+
+                            <option value="بسته">
+                                بسته
+                            </option>
 
                         </select>
 
@@ -562,6 +604,7 @@
 
 
                     <label>
+
                         موجودی اولیه
 
                         <input
@@ -576,6 +619,8 @@
 
                 </div>
 
+
+                <!-- ================= FORM ACTIONS ================= -->
 
                 <div class="form-actions">
 
@@ -614,7 +659,9 @@
 
             <div class="modal-header">
 
-                <h3>تغییر موجودی</h3>
+                <h3>
+                    تغییر موجودی
+                </h3>
 
                 <button
                     class="close-button"
@@ -642,6 +689,7 @@
 
 
                 <label>
+
                     نوع عملیات
 
                     <select id="stockAction">
@@ -664,6 +712,7 @@
 
 
                 <label>
+
                     مقدار
 
                     <input
@@ -712,31 +761,14 @@
 
 
 </div>
-      <div id="barcodeScannerModal" class="barcode-scanner-modal" aria-hidden="true">
-        <div class="barcode-scanner-card">
-            <div class="barcode-scanner-header">
-                <div>
-                    <h3>اسکن بارکد</h3>
-                    <p>بارکد را داخل کادر قرار دهید</p>
-                </div>
-                <button id="closeBarcodeScannerBtn" type="button" class="barcode-close-btn">×</button>
-            </div>
-            <div class="barcode-camera-wrap">
-                <video id="barcodeVideo" playsinline autoplay muted></video>
-                <div class="barcode-target"><span></span></div>
-            </div>
-            <div id="barcodeScannerStatus" class="barcode-scanner-status">دوربین در حال آماده‌سازی است...</div>
-            <button id="manualBarcodeBtn" type="button" class="barcode-manual-btn">ورود دستی بارکد</button>
-        </div>
-    </div>
 
-<script src="https://unpkg.com/@zxing/browser@0.1.5/umd/index.min.js"></script>
+
+<!-- ============================================================
+     APP JAVASCRIPT
+     ============================================================ -->
 
 <script src="app.js"></script>
-  
-
-
-
 
 </body>
-</html>
+
+    </html>
