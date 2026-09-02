@@ -991,10 +991,12 @@ async function chooseFolder() {
             "این مرورگر از اتصال مستقیم به پوشه پشتیبانی نمی‌کند."
         );
 
+
         setConnectionStatus(
             "حالت محلی فعال است",
             "local"
         );
+
 
         return false;
     }
@@ -1076,10 +1078,12 @@ async function tryAutoConnect() {
 
             folderPermissionGranted = false;
 
+
             setConnectionStatus(
                 "حالت محلی فعال است",
                 "local"
             );
+
 
             return false;
         }
@@ -1227,6 +1231,7 @@ async function reconnectExistingFolder() {
             "اطلاعات محلی فعال است؛ اجازه پوشه داده نشد",
             "local"
         );
+
 
         return false;
     }
@@ -4022,11 +4027,12 @@ async function handleBinaryEyeResult() {
     }
 
 
-    /*
-     مقصد اسکن:
-     product = افزودن کالا
-     sale    = فروش
-    */
+    /* ========================================================
+       مقصد اسکن
+       
+       product = افزودن کالا
+       sale    = فروش
+       ======================================================== */
 
     const urlTarget =
         url.searchParams.get(
@@ -4058,17 +4064,24 @@ async function handleBinaryEyeResult() {
 
 
     /* ========================================================
-       افزودن کالا
-       
-       نکته مهم:
-       وقتی از Binary Eye برمی‌گردیم، صفحه سایت دوباره لود شده
-       و پاپ‌آپ قبلی دیگر باز نیست.
+       بسیار مهم:
+       وقتی Binary Eye به سایت برمی‌گردد،
+       صفحه دوباره Load شده است.
 
-       بنابراین:
-       1. پاپ‌آپ افزودن کالا را دوباره باز می‌کنیم.
-       2. بارکد را داخل فیلد بارکد قرار می‌دهیم.
-       3. عنوان را روی افزودن کالا قرار می‌دهیم.
-       4. بعد از قرار دادن بارکد، فوکوس را روی نام کالا می‌بریم.
+       بنابراین ممکن است IndexedDB هنوز Load نشده باشد.
+
+       اینجا قبل از جستجوی کالا مطمئن می‌شویم
+       اطلاعات دیتابیس کامل آماده شده است.
+       ======================================================== */
+
+    if (!initialized) {
+
+        await initApp();
+    }
+
+
+    /* ========================================================
+       افزودن کالا
        ======================================================== */
 
     if (
@@ -4077,7 +4090,16 @@ async function handleBinaryEyeResult() {
     ) {
 
         /*
-         عنوان پاپ‌آپ را روی افزودن کالا قرار بده
+         ابتدا صفحه کالاها را فعال کن
+         */
+
+        showPage(
+            "products"
+        );
+
+
+        /*
+         عنوان پاپ‌آپ
          */
 
         const productModalTitle =
@@ -4140,8 +4162,7 @@ async function handleBinaryEyeResult() {
 
 
         /*
-         بعد از باز شدن پاپ‌آپ،
-         فوکوس روی نام کالا قرار بگیرد.
+         فوکوس روی نام کالا
          */
 
         setTimeout(
@@ -4165,8 +4186,7 @@ async function handleBinaryEyeResult() {
 
 
         /*
-         نتیجه را از URL حذف کن
-         تا با Refresh دوباره اسکن نشود.
+         نتیجه اسکن را از URL حذف کن
          */
 
         removeBinaryEyeResultFromURL();
@@ -4183,9 +4203,23 @@ async function handleBinaryEyeResult() {
 
     /* ========================================================
        فروش
-       بارکد را داخل جستجوی فروش قرار بده
-       سپس بین کالاهای موجود جستجو کن
        ======================================================== */
+
+    /*
+     خیلی مهم:
+     بعد از برگشت از Binary Eye حتماً صفحه فروش را فعال کن.
+     
+     بدون این خط سایت دوباره روی صفحه خانه می‌ماند.
+     */
+
+    showPage(
+        "sale"
+    );
+
+
+    /*
+     بارکد را داخل فیلد جستجوی فروش قرار بده
+     */
 
     const saleInput =
         document.getElementById(
@@ -4211,8 +4245,9 @@ async function handleBinaryEyeResult() {
 
 
     /*
-     پیدا کردن کالا در محصولات موجود
-    */
+     حالا که IndexedDB کامل Load شده،
+     کالا را با بارکد پیدا می‌کنیم.
+     */
 
     const product =
         findProductByBarcode(
@@ -4221,6 +4256,10 @@ async function handleBinaryEyeResult() {
 
 
     if (product) {
+
+        /*
+         نتیجه کالا را نمایش بده
+         */
 
         try {
 
@@ -4243,11 +4282,36 @@ async function handleBinaryEyeResult() {
 
     } else {
 
+        /*
+         حتی اگر کالا پیدا نشد،
+         نتیجه جستجو را نمایش بده
+         */
+
+        try {
+
+            await renderSaleSearch(
+                cleanBarcode
+            );
+
+        } catch (error) {
+
+            console.error(
+                "renderSaleSearch:",
+                error
+            );
+        }
+
+
         showToast(
             "کالا با این بارکد یافت نشد."
         );
     }
 
+
+    /*
+     نتیجه اسکن از URL حذف شود
+     تا با Refresh دوباره اجرا نشود.
+     */
 
     removeBinaryEyeResultFromURL();
 }
@@ -4421,7 +4485,7 @@ async function initApp() {
         /*
          مرحله اول:
          اطلاعات محلی را سریع بارگذاری می‌کنیم.
-        */
+         */
 
         await loadLocalDatabase();
 
@@ -4438,7 +4502,7 @@ async function initApp() {
         /*
          مرحله دوم:
          تلاش برای اتصال خودکار به پوشه.
-        */
+         */
 
         await tryAutoConnect();
 
